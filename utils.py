@@ -159,7 +159,6 @@ def read_wb_ccm(raw):
     return wb, ccm
 
 def get_ISO_ExposureTime(filepath):
-    # csdn -牧野- 2020-3-26
     # 不限于RAW，RGB图片也适用
     raw_file = open(filepath, 'rb')
     exif_file = exifread.process_file(raw_file, details=False, strict=True)

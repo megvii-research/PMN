@@ -504,21 +504,21 @@ def get_aug_param_torch(data, b=8, command='augv1.2', numpy=False):
     r = np.random.randint(2) * 0.25 + 0.25
     if np.random.randint(4):
         ratioE = data['ratio'][0].item()/100
-        u = ratioE / 2 - 1
+        u = ratioE / 2 - 1 # 0.25 or 0.5
         if ratioE > 1:
-            aug_g = torch.clamp(torch.randn(b) * r, -r*3, +r*3) + u
-            aug_g = torch.clamp(aug_g, 0, ratioE-1)
+            aug_g = torch.clamp(torch.randn(b) * r, -3*r, 3*r) + u
+            aug_g = torch.clamp(aug_g, 0, 4*u)
             aug_r = (aug_g+1) * (1 + torch.randn(b) * r) - 1
             aug_b = (aug_g+1) * (1 + torch.randn(b) * r) - 1
-            aug_r = torch.clamp(aug_r, 0, ratioE-1)
-            aug_b = torch.clamp(aug_b, 0, ratioE-1)
+            aug_r = torch.clamp(aug_r, 0, 4*u)
+            aug_b = torch.clamp(aug_b, 0, 4*u)
         else:
             aug_g = torch.randn(b) * r + r
-            aug_g = torch.clamp(aug_g, 0)
+            aug_g = torch.clamp(aug_g, 0, 4*u)
             aug_r = (aug_g+1) * (1 + torch.randn(b) * r) - 1
             aug_b = (aug_g+1) * (1 + torch.randn(b) * r) - 1
-            aug_r = torch.clamp(aug_r, 0)
-            aug_b = torch.clamp(aug_b, 0)
+            aug_r = torch.clamp(aug_r, 0, 4*u)
+            aug_b = torch.clamp(aug_b, 0, 4*u)
     
     if numpy:
         aug_r = aug_r.numpy()[0]
