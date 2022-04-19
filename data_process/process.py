@@ -16,7 +16,7 @@ import random
 from .unprocess import random_gains
 
 Dual_ISO_Cameras = ['SonyA7S2']
-
+DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 def FastGuidedFilter(p,I,d=15,eps=4e-5):
     p_lr = cv2.resize(p, None, fx=0.5, fy=0.5, interpolation=cv2.INTER_LINEAR)
     I_lr = cv2.resize(I, None, fx=0.5, fy=0.5, interpolation=cv2.INTER_LINEAR)
@@ -604,8 +604,8 @@ def raw_wb_aug_torch(noisy, gt, aug_wb=None, camera_type='IMX686', ratio=1, ori=
         noisy = noisy * (p['wp'] - p['bl'])
         # 补噪声
         daug = -np.minimum(np.min(aug_wb), 0)
-        daug = torch.from_numpy(np.array(daug)).cuda()
-        aug_wb = torch.from_numpy(aug_wb).cuda()
+        daug = torch.from_numpy(np.array(daug)).to(DEVICE)
+        aug_wb = torch.from_numpy(aug_wb).to(DEVICE)
         dy = gt * aug_wb.reshape(-1,1,1)    # 我考虑过这里dy和dn要不要量化一下，感觉不量化对多样性更友好
         if daug == 0:
             # 只有增益的话很好处理，叠加泊松分布就行
@@ -715,8 +715,8 @@ def generate_noisy_torch(y, camera_type=None,  noise_code='p', param=None, Multi
     else:
         noisy_read = 0
     # 使用行噪声
-    noisy_row = torch.randn(y.shape[-3], y.shape[-2], 1, device='cuda') * p['sigR'] / MFM if use_R else 0
-    noisy_q = (torch.rand(y.shape, device='cuda') - 0.5) * p['q'] * (p['wp'] - p['bl']) if use_Q else 0
+    noisy_row = torch.randn(y.shape[-3], y.shape[-2], 1, device=DEVICE) * p['sigR'] / MFM if use_R else 0
+    noisy_q = (torch.rand(y.shape, device=DEVICE) - 0.5) * p['q'] * (p['wp'] - p['bl']) if use_Q else 0
     noisy_bias = p['bias'] if use_D else 0
 
     # 归一化回[0, 1]

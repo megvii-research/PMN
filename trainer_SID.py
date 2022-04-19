@@ -168,15 +168,16 @@ class SID_Trainer(Base_Trainer):
                 pred = pred
                 imgs_hr = imgs_hr# * ratio
             
-            inputs = imgs_lr[0].detach().cpu().numpy().clip(0,1)
-            output = pred[0].detach().cpu().numpy()
-            target = imgs_hr[0].detach().cpu().numpy()
-            temp_img = np.concatenate((inputs, output, target),axis=2)[:3]
-            temp_img[0] = temp_img[0] * wb[0]
-            temp_img[2] = temp_img[2] * wb[2]
-            filename = os.path.join(self.sample_dir, 'temp', f'temp_{epoch//10*10:04d}.png')
-            temp_img = temp_img.transpose(1,2,0)[:,:,::-1] ** (1/2.2)
-            cv2.imwrite(filename, np.uint8(temp_img*255))
+            if self.save_plot:
+                inputs = imgs_lr[0].detach().cpu().numpy().clip(0,1)
+                output = pred[0].detach().cpu().numpy()
+                target = imgs_hr[0].detach().cpu().numpy()
+                temp_img = np.concatenate((inputs, output, target),axis=2)[:3]
+                temp_img[0] = temp_img[0] * wb[0]
+                temp_img[2] = temp_img[2] * wb[2]
+                filename = os.path.join(self.sample_dir, 'temp', f'temp_{epoch//10*10:04d}.png')
+                temp_img = temp_img.transpose(1,2,0)[:,:,::-1] ** (1/2.2)
+                cv2.imwrite(filename, np.uint8(temp_img*255))
 
             # fast eval
             if (self.hyper['last_epoch']+epoch) % self.hyper['plot_freq'] == 0:
@@ -218,7 +219,7 @@ class SID_Trainer(Base_Trainer):
                 metrics = pkl.load(f)
         # multiprocess
         task_list = []
-        save_plot = False #if self.multi_gpu is False else False
+        save_plot = self.save_plot
         with tqdm(total=len(self.dataloader_eval)) as t:
             for k, data in enumerate(self.dataloader_eval):
                 # 由于crops的存在，Dataloader会把数据变成5维，需要view回4维
@@ -271,6 +272,8 @@ class SID_Trainer(Base_Trainer):
                     res = quality_assess(output, target, data_range=255)
                     raw_metrics = [res['PSNR'], res['SSIM']]
                     self.eval_psnr.update(res['PSNR'])
+                    self.eval_psnr_dn.update(res['PSNR'])
+                    self.eval_ssim_dn.update(res['SSIM'])
                     metrics[name] = raw_metrics
                     # convert raw to rgb
                     if save_plot:

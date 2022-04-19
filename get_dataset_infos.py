@@ -55,7 +55,7 @@ def get_SID_info(info_dir='info', root_dir='/data/SID/Sony', mode='train'):
             info['ratio'][k] = int(info['ExposureTime']/info_short['ExposureTime'])
             
         info['long'] = path
-        info['short'] = paths_short
+        info['short'] = paths_short[i]
         
         infos.append(info)
         pbar.set_description_str(f'Raw:{info["name"]}')
@@ -135,6 +135,7 @@ class DatasetInfoParser():
 if __name__ == "__main__":
     parser = DatasetInfoParser()
     args = parser.parse()
+    os.makedirs(args.info_dir, exist_ok=True)
     if args.dstname == 'ELD':
         infos = get_ELD_info(info_dir=args.info_dir, root_dir=args.root_dir)
     elif args.dstname == 'SID':

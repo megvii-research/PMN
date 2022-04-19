@@ -12,7 +12,7 @@ class BaseParser():
 
     def parse(self):
         self.parser.add_argument('--runfile', '-f', default="runfiles/Ours.yml", type=Path, help="path to config")
-        self.parser.add_argument('--mode', '-m', default="evaltest", type=str, help="train or test")
+        self.parser.add_argument('--mode', '-m', default="train", type=str, help="train or test")
         self.parser.add_argument('--save_plot', '-s', default=True, type=bool, help="save or not")
         self.parser.add_argument('--debug', '-d', default=False, type=bool, help="debug or not")
 
@@ -48,6 +48,7 @@ class Base_Trainer():
         with open(self.parser.runfile, 'r', encoding="utf-8") as f:
             self.args = yaml.load(f.read(), Loader=yaml.FullLoader)
         self.mode = self.args['mode'] if self.parser.mode == 'train' else self.parser.mode
+        self.save_plot = self.parser.save_plot
         if self.parser.debug:
             self.args['num_workers'] = 0
         if 'clip' not in self.args['dst']: 
