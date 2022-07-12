@@ -77,9 +77,10 @@ class LambdaScheduler(LambdaLR):
                 for lmbda, base_lr in zip(self.lr_lambdas, self.base_lrs)]
 
 def get_cos_lr(step, period=1000, peak=20, lr=1e-4, ratio=0.2):
-    decay = 2 ** (step // period)
+    T = step // period
+    decay = 2 ** T
     step = step % period
-    if step <= peak:
+    if step <= peak and T>0:
         mul = step / peak
     else:
         mul = (1-ratio) * (np.cos((step - peak) / (period - peak) * math.pi) * 0.5 + 0.5) + ratio

@@ -1,4 +1,4 @@
-mode: 'train'
+mode: 'evaltest'
 checkpoint: 'saved_model/'
 model_name: 'SonyA7S2_Mix_Unet'
 result_dir: 'images/'

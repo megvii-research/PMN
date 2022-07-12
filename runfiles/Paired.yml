@@ -1,4 +1,4 @@
-mode: 'test'
+mode: 'evaltest'
 checkpoint: 'saved_model/'
 model_name: 'SonyA7S2_Paired_Official'
 result_dir: 'images/'

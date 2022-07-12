@@ -1,3 +1,6 @@
 __pycache__/*
 images/*
 *.pyc
+*.pth
+saved_model/*
+logs/*

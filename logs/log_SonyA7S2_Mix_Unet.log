@@ -19,3 +19,80 @@ ssims_lr=0.4878, ssims_dn=0.9852
 2022-04-19 16:09:52 >>  Epoch -1: PSNR=44.51
 psnrs_lr=25.95, psnrs_dn=44.51
 ssims_lr=0.2195, ssims_dn=0.9708
+2022-04-24 20:32:37 >>  Epoch 100: PSNR=44.91
+psnrs_lr=27.15, psnrs_dn=44.91
+ssims_lr=0.2102, ssims_dn=0.9418
+2022-04-24 22:31:14 >>  Epoch 200: PSNR=46.53
+psnrs_lr=27.15, psnrs_dn=46.53
+ssims_lr=0.2102, ssims_dn=0.9597
+2022-04-25 00:26:37 >>  Epoch 300: PSNR=47.01
+psnrs_lr=27.15, psnrs_dn=47.01
+ssims_lr=0.2102, ssims_dn=0.9609
+2022-04-25 02:21:00 >>  Epoch 400: PSNR=46.77
+psnrs_lr=27.15, psnrs_dn=46.77
+ssims_lr=0.2102, ssims_dn=0.9576
+2022-04-25 04:12:15 >>  Epoch 500: PSNR=46.91
+psnrs_lr=27.15, psnrs_dn=46.91
+ssims_lr=0.2102, ssims_dn=0.9614
+2022-04-25 06:00:09 >>  Epoch 600: PSNR=47.56
+psnrs_lr=27.15, psnrs_dn=47.56
+ssims_lr=0.2102, ssims_dn=0.9694
+2022-04-25 06:00:11 >>  Successfully reload best model (Eval PSNR:47.56400426769785)
+2022-04-25 07:46:07 >>  Epoch 700: PSNR=47.03
+psnrs_lr=27.15, psnrs_dn=47.03
+ssims_lr=0.2102, ssims_dn=0.9572
+2022-04-25 09:31:38 >>  Epoch 800: PSNR=46.92
+psnrs_lr=27.15, psnrs_dn=46.92
+ssims_lr=0.2102, ssims_dn=0.9635
+2022-04-25 11:17:22 >>  Epoch 900: PSNR=46.27
+psnrs_lr=27.15, psnrs_dn=46.27
+ssims_lr=0.2102, ssims_dn=0.9451
+2022-04-25 13:06:57 >>  Epoch 1000: PSNR=47.11
+psnrs_lr=27.15, psnrs_dn=47.11
+ssims_lr=0.2102, ssims_dn=0.9640
+2022-04-25 15:14:18 >>  Epoch 1100: PSNR=47.58
+psnrs_lr=27.15, psnrs_dn=47.58
+ssims_lr=0.2102, ssims_dn=0.9674
+2022-04-25 17:18:26 >>  Epoch 1200: PSNR=47.19
+psnrs_lr=27.15, psnrs_dn=47.19
+ssims_lr=0.2102, ssims_dn=0.9660
+2022-04-25 17:18:28 >>  Successfully reload best model (Eval PSNR:47.57948783917096)
+2022-04-25 19:15:31 >>  Epoch 1300: PSNR=47.85
+psnrs_lr=27.15, psnrs_dn=47.85
+ssims_lr=0.2102, ssims_dn=0.9704
+2022-04-25 21:09:56 >>  Epoch 1400: PSNR=46.63
+psnrs_lr=27.15, psnrs_dn=46.63
+ssims_lr=0.2102, ssims_dn=0.9491
+2022-04-25 22:53:28 >>  Epoch 1500: PSNR=46.90
+psnrs_lr=27.15, psnrs_dn=46.90
+ssims_lr=0.2102, ssims_dn=0.9550
+2022-04-26 00:26:23 >>  Epoch 1600: PSNR=47.43
+psnrs_lr=27.15, psnrs_dn=47.43
+ssims_lr=0.2102, ssims_dn=0.9614
+2022-04-26 01:59:10 >>  Epoch 1700: PSNR=47.87
+psnrs_lr=27.15, psnrs_dn=47.87
+ssims_lr=0.2102, ssims_dn=0.9688
+2022-04-26 03:31:02 >>  Epoch 1800: PSNR=47.10
+psnrs_lr=27.15, psnrs_dn=47.10
+ssims_lr=0.2102, ssims_dn=0.9573
+2022-04-26 03:31:04 >>  Successfully reload best model (Eval PSNR:47.865626739077356)
+2022-04-26 03:31:08 >>  ELD Datasets: Dgain=100
+2022-04-26 03:33:20 >>  Epoch -1: PSNR=46.22
+psnrs_lr=30.98, psnrs_dn=46.22
+ssims_lr=0.4878, ssims_dn=0.9829
+2022-04-26 03:33:20 >>  ELD Datasets: Dgain=200
+2022-04-26 03:35:27 >>  Epoch -1: PSNR=44.28
+psnrs_lr=25.95, psnrs_dn=44.28
+ssims_lr=0.2195, ssims_dn=0.9671
+2022-04-26 03:35:32 >>  SID Datasets: Dgain=100
+2022-04-26 03:38:21 >>  Epoch -1: PSNR=42.00
+psnrs_lr=29.21, psnrs_dn=42.00
+ssims_lr=0.5213, ssims_dn=0.9548
+2022-04-26 03:38:21 >>  SID Datasets: Dgain=250
+2022-04-26 03:41:04 >>  Epoch -1: PSNR=40.67
+psnrs_lr=23.77, psnrs_dn=40.67
+ssims_lr=0.3286, ssims_dn=0.9434
+2022-04-26 03:41:05 >>  SID Datasets: Dgain=300
+2022-04-26 03:44:27 >>  Epoch -1: PSNR=37.22
+psnrs_lr=22.26, psnrs_dn=37.22
+ssims_lr=0.2691, ssims_dn=0.9281

@@ -1,6 +1,6 @@
-mode: 'evaltest'
+mode: 'train'
 checkpoint: 'saved_model/'
-model_name: 'SonyA7S2_ELD_Official'
+model_name: 'SonyA7S2_Mix_Unet'
 result_dir: 'images/'
 num_gpu: 1
 num_workers: 4
@@ -12,7 +12,7 @@ dst: &base_dst
   ds_dir: 'resources'
   dataset: 'SID_Dataset' 
   dstname: 'SID'
-  command: ''
+  command: 'augv1.2, idremap, darkshading2'
   camera_type: 'SonyA7S2'
   noise_code: 'pgrq'
   patch_size: 512
@@ -23,15 +23,16 @@ dst: &base_dst
   wp: 16383
   bl: 512
   ori: False
-  clip: True
-  gpu_preprocess: False
+  clip: False
+  gpu_preprocess: True
 dst_train:
   <<: *base_dst
   mode: 'train'
-  dataset: 'SID_Dataset' 
+  dataset: 'Mix_Dataset' 
   dstname: 'SID'
 dst_eval:
   <<: *base_dst
+  root_dir: '/data/ELD'
   mode: 'eval'
   dataset: 'ELD_Dataset' 
   dstname: 'ELD'
@@ -57,12 +58,12 @@ arch:
 
 hyper:
   lr_scheduler: 'WarmupCosine'
-  learning_rate: 2.e-4
+  learning_rate: 1.e-4
   batch_size: 1
-  last_epoch: 0
+  last_epoch: 600
   step_size: 10
   stop_epoch : 1800
-  T: 3
+  T: 2
   num_workers: 4
   num_gpus: 1
   save_freq: 10
