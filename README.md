@@ -1,6 +1,6 @@
 # PMN (Paired real data Meet Noise model)
 
-The official implementation of ACMMM 2022 paper "[Learnability Enhancement for Low-light Raw Denoising: Where Paired Real Data Meets Noise Modeling](https://arxiv.org/submit/4398181/view)"
+The official implementation of ACMMM 2022 paper "[Learnability Enhancement for Low-light Raw Denoising: Where Paired Real Data Meets Noise Modeling](https://arxiv.org/abs/2207.06103)"
 
 ## ✨ Highlights
 ![Pipeline](images/github/pipeline.png)
@@ -64,7 +64,7 @@ The raw noise parameters at each ISO are stored in the `get_camera_noisy_params_
 |         | ×200  | PSNR  | 38.18 | 43.43 | 44.10 | 41.97       | 44.51 |
 |         |       | SSIM  | 0.782 | 0.954 | 0.964 | 0.928       | 0.973 |
 | SID     | ×100  | PSNR  | 39.44 | 41.95 | 42.29 | 42.06       | 43.16 |
-|         |       | SSIM  | 0.89  | 0.963 | 0.951 | 0.955       | 0.960  |
+|         |       | SSIM  | 0.890 | 0.963 | 0.951 | 0.955       | 0.960  |
 |         | ×250  | PSNR  | 34.32 | 39.44 | 40.22 | 39.60       | 40.92 |
 |         |       | SSIM  | 0.768 | 0.931 | 0.938 | 0.938       | 0.947 |
 |         | ×300  | PSNR  | 30.66 | 36.36 | 36.87 | 36.85       | 37.77 |
