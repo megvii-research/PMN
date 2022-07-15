@@ -6,7 +6,7 @@ The official implementation of ACMMM 2022 paper "[Learnability Enhancement for L
 ![Pipeline](images/github/pipeline.png)
 * We present a learnability enhancement strategy to reform paired real data according to noise modeling. Our strategy consists of two efficient techniques: shot noise augmentation (SNA) and dark shading correction (DSC). 
 * SNA improves the precision of data mapping by increasing the data volume. Benefiting from the increased data volume, the mapping can promote the denoised images with clear texture.
-* DSC reduces the complexity of data mapping by reducing the noise complexity. Benefiting from the reduced noise complexity, the mapping can promote the denoised images with exact colors.
+* DSC reduces the complexity of data mapping by reducing the noise complexity. Benefiting from the reduced noise complexity, the mapping can promote the denoised images with exact colors.
 
 ![Ablation](images/github/ablation.png)
 
