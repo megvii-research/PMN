@@ -196,7 +196,7 @@ class SID_Trainer(Base_Trainer):
                 model_path = os.path.join(f'./checkpoints/{self.model_name}_best_model.pth')
                 if os.path.exists(model_path):
                     model = torch.load(model_path, map_location=self.device)
-                    self.net = load_weights(self.net, model, by_name=True)
+                    self.net = load_weights(self.net, model, by_name=True, multi_gpu=self.multi_gpu)
                     log(f'Successfully reload best model (Eval PSNR:{self.best_psnr})',
                         log=f'./logs/log_{self.model_name}.log')
 
@@ -468,7 +468,7 @@ if __name__ == '__main__':
     if os.path.exists(best_model_path) is False: 
         best_model_path = os.path.join(f'./checkpoints/{trainer.model_name}_last_model.pth')
     best_model = torch.load(best_model_path, map_location=trainer.device)
-    trainer.net = load_weights(trainer.net, best_model)
+    trainer.net = load_weights(trainer.net, best_model, multi_gpu=trainer.multi_gpu)
     if 'eval' in trainer.mode:
         # ELD
         trainer.change_eval_dst('eval')

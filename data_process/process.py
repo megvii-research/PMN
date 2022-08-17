@@ -500,25 +500,40 @@ def sample_params(camera_type='NikonD850', ln_ratio=False):
 
 
 def get_aug_param_torch(data, b=8, command='augv1.2', numpy=False):
+    # 论文中的策略对应的是augv1.1。augv1.2中额外的随机性是工程性trick，两者评测差距<0.1dB。
+    # 后续工作会有策略更新，敬请期待。
     aug_r, aug_g, aug_b = torch.zeros(b), torch.zeros(b), torch.zeros(b)
     r = np.random.randint(2) * 0.25 + 0.25
     if np.random.randint(4):
         ratioE = data['ratio'][0].item()/100
-        u = ratioE / 2 - 1 # 0.25 or 0.5
-        if ratioE > 1:
-            aug_g = torch.clamp(torch.randn(b) * r, -3*r, 3*r) + u
-            aug_g = torch.clamp(aug_g, 0, 4*u)
-            aug_r = (aug_g+1) * (1 + torch.randn(b) * r) - 1
-            aug_b = (aug_g+1) * (1 + torch.randn(b) * r) - 1
-            aug_r = torch.clamp(aug_r, 0, 4*u)
-            aug_b = torch.clamp(aug_b, 0, 4*u)
-        else:
-            aug_g = torch.randn(b) * r + r
-            aug_g = torch.clamp(aug_g, 0, 4*u)
-            aug_r = (aug_g+1) * (1 + torch.randn(b) * r) - 1
-            aug_b = (aug_g+1) * (1 + torch.randn(b) * r) - 1
-            aug_r = torch.clamp(aug_r, 0, 4*u)
-            aug_b = torch.clamp(aug_b, 0, 4*u)
+        if 'augv1.1' in command:
+            if ratioE > 2:
+                u = ratioE / 2 - 1
+                aug_g = torch.clamp(torch.randn(b) * r, -3*r, 3*r) + u
+                aug_g = torch.clamp(aug_g, 0, 4*u)
+                aug_r = (aug_g+1) * (1 + torch.randn(b) * r) - 1
+                aug_b = (aug_g+1) * (1 + torch.randn(b) * r) - 1
+                aug_r = torch.clamp(aug_r, 0, 4*u)
+                aug_b = torch.clamp(aug_b, 0, 4*u)
+        elif 'augv1.2' in command:
+            if ratioE > 2:
+                if np.random.randint(5):
+                    u = ratioE / 2 - 1  # 0.25 or 0.5
+                    aug_g = torch.clamp(torch.randn(b) * r, -3*r, 3*r) + u
+                    aug_g = torch.clamp(aug_g, 0, 4*u)
+                    aug_r = (aug_g+1) * (1 + torch.randn(b) * r) - 1
+                    aug_b = (aug_g+1) * (1 + torch.randn(b) * r) - 1
+                    aug_r = torch.clamp(aug_r, 0, 4*u)
+                    aug_b = torch.clamp(aug_b, 0, 4*u)
+            else:
+                if np.random.randint(4) < 1:
+                    u = 0.25
+                    aug_g = torch.randn(b) * r + u
+                    aug_g = torch.clamp(aug_g, 0, 4*u)
+                    aug_r = (aug_g+1) * (1 + torch.randn(b) * r) - 1
+                    aug_b = (aug_g+1) * (1 + torch.randn(b) * r) - 1
+                    aug_r = torch.clamp(aug_g, 0, 4*u)
+                    aug_b = torch.clamp(aug_g, 0, 4*u)
     
     if numpy:
         aug_r = aug_r.numpy()[0]
