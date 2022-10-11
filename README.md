@@ -1,6 +1,7 @@
 # PMN (Paired real data Meet Noise model)
 
-The official implementation of ACMMM 2022 paper "[Learnability Enhancement for Low-light Raw Denoising: Where Paired Real Data Meets Noise Modeling](https://arxiv.org/abs/2207.06103)"  
+The official implementation of ACMMM 2022 paper "[Learnability Enhancement for Low-light Raw Denoising: Where Paired Real Data Meets Noise Modeling](https://arxiv.org/abs/2207.06103)" 【[Arxiv](https://arxiv.org/abs/2207.06103) / [ACM DL](https://dl.acm.org/doi/10.1145/3503161.3548186)】  
+Presentation video for the Best Paper Session: [YouTube](https://www.youtube.com/watch?v=fW1l73MCT-E) / [BiliBili](https://www.bilibili.com/video/BV1pG411E7mE/)  
 Interested readers are also referred to our official [Note](https://zhuanlan.zhihu.com/p/544592330) about this work in Zhihu (Chinese).
 
 ## ✨ Highlights
