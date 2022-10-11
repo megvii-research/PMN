@@ -98,6 +98,7 @@ If you find our code helpful in your research or work please cite our paper.
 @inproceedings{feng2021learnability,
     author = {Feng, Hansen and Wang, Lizhi and Wang, Yuzhi and Huang, Hua},
     title = {Learnability Enhancement for Low-Light Raw Denoising: Where Paired Real Data Meets Noise Modeling},
+    booktitle = {Proceedings of the 30th ACM International Conference on Multimedia},
     year = {2022},
     isbn = {9781450392037},
     publisher = {Association for Computing Machinery},
