@@ -117,4 +117,4 @@ If you find our code helpful in your research or work please cite our paper.
 * [SFRN (ICCV 2021)](https://github.com/zhangyi-3/noise-synthesis)
 
 ## 📧 Contact
-If you would like to get in-depth help from me, please feel free to contact me (fenghansen@bit.edu.cn/hansen97@outlook.com) with a brief self-introduction (including your name, affiliation, and position).
+If you would like to get in-depth help from me, please feel free to contact me (fenghansen@bit.edu.cn / hansen97@outlook.com) with a brief self-introduction (including your name, affiliation, and position).
