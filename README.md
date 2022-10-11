@@ -95,10 +95,19 @@ Note: The quantitative results on the SID dataset is different from the provided
 If you find our code helpful in your research or work please cite our paper.
 ```bibtex
 @inproceedings{feng2021learnability,
-    title={Learnability Enhancement for Low-light Raw Denoising: Where Paired Real Data Meets Noise Modeling},
-    author={Feng, Hansen and Wang, Lizhi and Wang, Yuzhi and Huang, Hua},
-    booktitle={Proceedings of the 30th ACM International Conference on Multimedia},
-    year={2022}
+    author = {Feng, Hansen and Wang, Lizhi and Wang, Yuzhi and Huang, Hua},
+    title = {Learnability Enhancement for Low-Light Raw Denoising: Where Paired Real Data Meets Noise Modeling},
+    year = {2022},
+    isbn = {9781450392037},
+    publisher = {Association for Computing Machinery},
+    address = {New York, NY, USA},
+    url = {https://doi.org/10.1145/3503161.3548186},
+    doi = {10.1145/3503161.3548186},
+    pages = {1436–1444},
+    numpages = {9},
+    location = {Lisboa, Portugal},
+    series = {MM '22}
+}
 }
 ```
 
@@ -106,3 +115,6 @@ If you find our code helpful in your research or work please cite our paper.
 * [SID (CVPR 2018)](https://github.com/cchen156/Learning-to-See-in-the-Dark)
 * [ELD (CVPR 2020 / TPAMI 2021)](https://github.com/Vandermode/ELD)
 * [SFRN (ICCV 2021)](https://github.com/zhangyi-3/noise-synthesis)
+
+## 📧 Contact
+If you would like to get in-depth help from me, please feel free to contact me (fenghansen@bit.edu.cn/hansen97@outlook.com) with a brief self-introduction (including your name, affiliation, and position).
