@@ -109,7 +109,6 @@ If you find our code helpful in your research or work please cite our paper.
     location = {Lisboa, Portugal},
     series = {MM '22}
 }
-}
 ```
 
 ## 🤝 Acknowledgments
