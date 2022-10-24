@@ -1,6 +1,6 @@
 # PMN (Paired real data Meet Noise model)
 
-The official implementation of ACMMM 2022 paper "[Learnability Enhancement for Low-light Raw Denoising: Where Paired Real Data Meets Noise Modeling](https://arxiv.org/abs/2207.06103)" 【[Arxiv](https://arxiv.org/abs/2207.06103) / [ACM DL](https://dl.acm.org/doi/10.1145/3503161.3548186)】  
+The official implementation of ACMMM 2022 Award Candidates "[Learnability Enhancement for Low-light Raw Denoising: Where Paired Real Data Meets Noise Modeling](https://arxiv.org/abs/2207.06103)" 【[Arxiv](https://arxiv.org/abs/2207.06103) / [ACM DL](https://dl.acm.org/doi/10.1145/3503161.3548186)】  
 Presentation video for the Best Paper Session: [YouTube](https://www.youtube.com/watch?v=fW1l73MCT-E) / [BiliBili](https://www.bilibili.com/video/BV1pG411E7mE/)  
 Interested readers are also referred to our official [Note](https://zhuanlan.zhihu.com/p/544592330) about this work in Zhihu (Chinese).
 
@@ -95,16 +95,11 @@ Note: The quantitative results on the SID dataset is different from the provided
 ## 🏷️ Citation
 If you find our code helpful in your research or work please cite our paper.
 ```bibtex
-@inproceedings{feng2021learnability,
+@inproceedings{feng2022learnability,
     author = {Feng, Hansen and Wang, Lizhi and Wang, Yuzhi and Huang, Hua},
     title = {Learnability Enhancement for Low-Light Raw Denoising: Where Paired Real Data Meets Noise Modeling},
     booktitle = {Proceedings of the 30th ACM International Conference on Multimedia},
     year = {2022},
-    isbn = {9781450392037},
-    publisher = {Association for Computing Machinery},
-    address = {New York, NY, USA},
-    url = {https://doi.org/10.1145/3503161.3548186},
-    doi = {10.1145/3503161.3548186},
     pages = {1436–1444},
     numpages = {9},
     location = {Lisboa, Portugal},
