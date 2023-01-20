@@ -1,8 +1,7 @@
 # PMN (TPAMI)
 
 This work is based on our preliminary work "[Learnability Enhancement for Low-light Raw Denoising: Where Paired Real Data Meets Noise Modeling](https://github.com/megvii-research/PMN)" in ACMMM 2022.  
-Welcome to visit the [project](https://fenghansen.github.io/publication/PMN/) to quickly understand this work.  
-The checkpoints and resources are too large, so we put them on the [Baidu Netdisk](https://pan.baidu.com/s/1YIY_bmrdK5SLfrHBQjWfRA?pwd=vmcl). Please download them to run the project.
+The checkpoints and resources are too large, so we put them on the [Baidu Netdisk](https://pan.baidu.com/s/1YIY_bmrdK5SLfrHBQjWfRA?pwd=vmcl).
 
 ## 📋 TODO LIST
 
