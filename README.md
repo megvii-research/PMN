@@ -1,17 +1,33 @@
-# PMN (Paired real data Meet Noise model)
+# PMN (TPAMI)
 
-The official implementation of ACMMM 2022 Award Candidates "[Learnability Enhancement for Low-light Raw Denoising: Where Paired Real Data Meets Noise Modeling](https://arxiv.org/abs/2207.06103)" 【[Arxiv](https://arxiv.org/abs/2207.06103) / [ACM DL](https://dl.acm.org/doi/10.1145/3503161.3548186)】  
-Presentation video for the Best Paper Session: [YouTube](https://www.youtube.com/watch?v=fW1l73MCT-E) / [BiliBili](https://www.bilibili.com/video/BV1pG411E7mE/)  
-Interested readers are also referred to our official [Note](https://zhuanlan.zhihu.com/p/544592330) about this work in Zhihu (Chinese).
+This work is based on our preliminary work "[Learnability Enhancement for Low-light Raw Denoising: Where Paired Real Data Meets Noise Modeling](https://github.com/megvii-research/PMN)" in ACMMM 2022.  
+Welcome to visit the [project](https://fenghansen.github.io/publication/PMN/) to quickly understand this work.  
+The checkpoints and resources are too large, so we put them on the [Baidu Netdisk](https://pan.baidu.com/s/1YIY_bmrdK5SLfrHBQjWfRA?pwd=vmcl). Please download them to run the project.
+
+## 📋 TODO LIST
+
+[x] Checkout the main branch to TPAMI branch.  
+[x] Cleanup & update the code for the public datasets.  
+[] Cleanup & update the code for our datasets.  
+[] Test the the code for evaluation.  
+[] Test the the code for training.  
 
 ## ✨ Highlights
-![Pipeline](images/github/pipeline.png)
-* We present a learnability enhancement strategy to reform paired real data according to noise modeling. Our strategy consists of two efficient techniques: shot noise augmentation (SNA) and dark shading correction (DSC). 
-* SNA improves the precision of data mapping by increasing the data volume. Benefiting from the increased data volume, the mapping can promote the denoised images with clear texture.
-* DSC reduces the complexity of data mapping by reducing the noise complexity. Benefiting from the reduced noise complexity, the mapping can promote the denoised images with exact colors.
+1. We light the idea of **learnability enhancement** for low-light raw image denoising by reforming paired real data according to the noise modeling from a data perspective.
+<div align=center><img src="images/github/teaser.jpg" width="443"></div>
 
-![Ablation](images/github/ablation.png)
+2. We increase the data volume of paired real data with a novel **Shot Noise Augmentation (SNA)** method, which promotes the precision of data mapping by data augmentation.
+<div align=center><img src="images/github/SNA.jpg" width="756"></div>
 
+3. We reduce the noise complexity with a novel **Dark Shading Correction (DSC)** method, which promotes the accuracy of data mapping by noise decoupling.
+<div align=center><img src="images/github/DSC.jpg" width="756"></div>
+
+4. We develop a high-quality **image acquisition protocol** and build a **Low-light Raw Image Denoising (LRID) dataset**, which promotes the reliability of data mapping by improving the data quality of paired real data.
+![pipeline](images/github/GT_pipeline.jpg)
+<div align=center><img src="images/github/dataset_show.jpg" width="608"></div>
+
+
+5. We demonstrate the superior performance of our methods on public datasets and our dataset in both quantitative results and visual quality.
 
 ## 📋 Prerequisites
 * Python >=3.6, PyTorch >= 1.6
@@ -33,8 +49,9 @@ python3 get_dataset_infos.py --dstname SID --root_dir /data/SID/Sony --mode eval
 python3 get_dataset_infos.py --dstname SID --root_dir /data/SID/Sony --mode train
 ```
 2. evaluate
+
+If you don't want to save pictures, please add ```--save_plot False```. This option will save your time and space.
 ```bash 
-# If you don't want to save pictures, please add '--save_plot False'. This option will save your time and space.
 # ELD & SID
 python3 trainer_SID.py -f runfiles/Ours.yml --mode evaltest
 # ELD only
@@ -59,38 +76,27 @@ The raw noise parameters at each ISO are stored in the `get_camera_noisy_params_
 
 ## 📄 Results
 
-| Dataset | Ratio | Index | P-G   | ELD   | SFRN  | Paired      | Ours  |
-|---------|-------|-------|-------|-------|-------|-------------|-------|
-| ELD     | ×100  | PSNR  | 42.05 | 45.45 | 46.02 | 44.47       | 46.50  |
-|         |       | SSIM  | 0.872 | 0.975 | 0.977 | 0.968       | 0.985 |
-|         | ×200  | PSNR  | 38.18 | 43.43 | 44.10 | 41.97       | 44.51 |
-|         |       | SSIM  | 0.782 | 0.954 | 0.964 | 0.928       | 0.973 |
-| SID     | ×100  | PSNR  | 39.44 | 41.95 | 42.29 | 42.06       | 43.16 |
-|         |       | SSIM  | 0.890 | 0.963 | 0.951 | 0.955       | 0.960  |
-|         | ×250  | PSNR  | 34.32 | 39.44 | 40.22 | 39.60       | 40.92 |
-|         |       | SSIM  | 0.768 | 0.931 | 0.938 | 0.938       | 0.947 |
-|         | ×300  | PSNR  | 30.66 | 36.36 | 36.87 | 36.85       | 37.77 |
-|         |       | SSIM  | 0.657 | 0.911 | 0.917 | 0.923       | 0.934 |
+### Comparision
 
-Note: The quantitative results on the SID dataset is different from the provided results in ELD(TPAMI) because only the central area is compared in ELD(TPAMI) on the SID dataset.
+![table](images/github/results_tab.jpg)
+Note: 
+* The quantitative results on the SID dataset is different from the provided results in ELD (TPAMI) because only the central area is compared in ELD (TPAMI) on the SID dataset.  
+* We developed the implementation of SFRN and increased the number of dark frames, so its performance is much better than that in our preliminary version.
 
 <details>
-<summary>w/o brighteness alignment provided by ELD</summary>
+<summary>Visual Comparision</summary>
 
-| Dataset | Ratio | Index | P-G   | ELD   | SFRN  | Paired | Ours  |
-|---------|-------|-------|-------|-------|-------|-------------|-------|
-| ELD     | ×100  | PSNR  | 39.44 | 45.06 | 45.47 | 43.80       | 45.94 |
-|         |       | SSIM  | 0.780 | 0.975 | 0.976 | 0.963       | 0.984 |
-|         | ×200  | PSNR  | 33.76 | 43.21 | 43.65 | 41.54       | 44.00 |
-|         |       | SSIM  | 0.609 | 0.954 | 0.962 | 0.918       | 0.968 |
-| SID     | ×100  | PSNR  | 37.50 | 41.21 | 41.38 | 41.39       | 42.65 |
-|         |       | SSIM  | 0.856 | 0.952 | 0.949 | 0.954       | 0.959 |
-|         | ×250  | PSNR  | 31.67 | 38.54 | 39.48 | 38.90       | 40.39 |
-|         |       | SSIM  | 0.765 | 0.929 | 0.937 | 0.937       | 0.946 |
-|         | ×300  | PSNR  | 28.53 | 35.35 | 35.96 | 36.55       | 37.23 |
-|         |       | SSIM  | 0.667 | 0.908 | 0.915 | 0.922       | 0.933 |
-
+#### ELD
+![results_ELD](images/github/results_ELD.jpg)
+#### SID
+![results_SID](images/github/results_SID.jpg)
+#### Ours (LRID)
+![results_Ours](images/github/results_ours.jpg)
 </details>
+
+### Ablation Study
+![Ablation_tab](images/github/ablation_tab.jpg)
+![Ablation_fig](images/github/ablation_fig.jpg)
 
 ## 🏷️ Citation
 If you find our code helpful in your research or work please cite our paper.

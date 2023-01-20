@@ -61,6 +61,35 @@ def data_aug(data, choice, bias=0, rot=False):
         data = np.flip(data, axis=3+bias)
     return data
 
+# sigma是σ_read, gain是K
+def VST(x, sigma, mu=0, gain=1.0, wp=1):
+    # 无增益时，y = 2 * np.sqrt(x + 3.0 / 8.0 + sigma ** 2)
+    y = x * wp
+    y = gain * x + (gain ** 2) * 3.0 / 8.0 + sigma ** 2 - gain * mu
+    y = np.sqrt(np.maximum(y, np.zeros_like(y)))
+    y = y / wp
+    return (2.0 / gain) * y
+
+# sigma是σ_read, gain是K
+def inverse_VST(x, sigma, gain=1.0, wp=1):
+    x = x * wp
+    y = (x / 2.0)**2 - 3.0/8.0 - sigma**2 / gain**2
+    y_exact =  y * gain
+    y_exact = y_exact / wp
+    return y_exact
+
+def inverse_VST_torch(x, noiseparam, iso_list, wp=1):
+    x = x * wp
+    b = len(iso_list)
+    for i in range(b):
+        iso = iso_list[i].item()
+        gain = noiseparam[iso]['Kmax']
+        sigma = noiseparam[iso]['sigGs']
+        x[i] = (x[i] / 2.0)**2 - 3.0/8.0 - sigma**2 / gain**2
+        x[i] =  x[i] * gain
+    x = x / wp
+    return x
+
 def raw2bayer(raw, wp=1023, bl=64, norm=True, clip=False, bias=np.array([0,0,0,0])):
     raw = raw.astype(np.float32)
     H, W = raw.shape
@@ -382,10 +411,17 @@ def get_camera_noisy_params_max(camera_type=None):
         'SonyA7S2_20000': {'Kmax': 19.126, 'lam': -0.060213074, 'sigGs': 22.084776, 'sigGssig': 0.21820943, 'sigTL': 11.002351, 'sigTLsig': 0.28806436, 'sigR': 1.8810822, 'sigRsig': 0.18937257, 'bias': 0, 'biassig': 0.4984733, 'q': 6.103515625e-05, 'wp': 16383, 'bl': 512}, 
         'SonyA7S2_25600': {'Kmax': 24.48128, 'lam': -0.09089118, 'sigGs': 25.853043, 'sigGssig': 0.35371417, 'sigTL': 12.175712, 'sigTLsig': 0.4215717, 'sigR': 2.2760193, 'sigRsig': 0.2609267, 'bias': 0, 'biassig': 0.37568903, 'q': 6.103515625e-05, 'wp': 16383, 'bl': 512}
         }
+    cam_noisy_params['IMX686_100'] = {
+        'Kmax':0.083805, 'sigGs':0.67998, 'sigGssig':0.02,
+        'sigTL':0.67998, 'lam':0.015, 'sigR':0.23668,
+        'q':1/(2**10), 'wp':1023, 'bl':64, 
+        'bias':np.array([0,0,0,0])
+    }
     cam_noisy_params['IMX686_6400'] = {
         'Kmax':8.74253, 'sigGs':12.8901, 'sigGssig':0.03,
         'sigTL':12.8901, 'lam':0.015, 'sigR':0,
-        'q':1/(2**10), 'wp':1023, 'bl':64, 'bias':-0.56896687
+        'q':1/(2**10), 'wp':1023, 'bl':64, 
+        'bias':np.array([-0.08113494,-0.04906388,-0.9408157,-1.2048522])
     }
     if camera_type in cam_noisy_params:
         return cam_noisy_params[camera_type]
@@ -499,47 +535,36 @@ def sample_params(camera_type='NikonD850', ln_ratio=False):
             'lam':lam, 'q':q, 'ratio':ratio, 'wp':wp, 'bl':bl}
 
 
-def get_aug_param_torch(data, b=8, command='augv1.2', numpy=False):
-    # 论文中的策略对应的是augv1.1。augv1.2中额外的随机性是工程性trick，两者评测差距<0.1dB。
-    # 后续工作会有策略更新，敬请期待。
+def get_aug_param_torch(data, b=8, command='augv5', numpy=False, camera_type='SonyA7S2'):
     aug_r, aug_g, aug_b = torch.zeros(b), torch.zeros(b), torch.zeros(b)
     r = np.random.randint(2) * 0.25 + 0.25
+    u = r
     if np.random.randint(4):
-        ratioE = data['ratio'][0].item()/100
-        if 'augv1.1' in command:
-            if ratioE > 2:
-                u = ratioE / 2 - 1
-                aug_g = torch.clamp(torch.randn(b) * r, -3*r, 3*r) + u
-                aug_g = torch.clamp(aug_g, 0, 4*u)
-                aug_r = (aug_g+1) * (1 + torch.randn(b) * r) - 1
-                aug_b = (aug_g+1) * (1 + torch.randn(b) * r) - 1
-                aug_r = torch.clamp(aug_r, 0, 4*u)
-                aug_b = torch.clamp(aug_b, 0, 4*u)
-        elif 'augv1.2' in command:
-            if ratioE > 2:
-                if np.random.randint(5):
-                    u = ratioE / 2 - 1  # 0.25 or 0.5
-                    aug_g = torch.clamp(torch.randn(b) * r, -3*r, 3*r) + u
-                    aug_g = torch.clamp(aug_g, 0, 4*u)
-                    aug_r = (aug_g+1) * (1 + torch.randn(b) * r) - 1
-                    aug_b = (aug_g+1) * (1 + torch.randn(b) * r) - 1
-                    aug_r = torch.clamp(aug_r, 0, 4*u)
-                    aug_b = torch.clamp(aug_b, 0, 4*u)
-            else:
-                if np.random.randint(4) < 1:
-                    u = 0.25
-                    aug_g = torch.randn(b) * r + u
-                    aug_g = torch.clamp(aug_g, 0, 4*u)
-                    aug_r = (aug_g+1) * (1 + torch.randn(b) * r) - 1
-                    aug_b = (aug_g+1) * (1 + torch.randn(b) * r) - 1
-                    aug_r = torch.clamp(aug_g, 0, 4*u)
-                    aug_b = torch.clamp(aug_g, 0, 4*u)
-    
-    if numpy:
-        aug_r = aug_r.numpy()[0]
-        aug_g = aug_g.numpy()[0]
-        aug_b = aug_b.numpy()[0]
+        if 'augv5' in command:
+            # v5，依照相机白平衡经验参数增强，激进派作风
+            rgb_gain, red_gain, blue_gain = random_gains(camera_type)
+            rgb_gain = 1 / rgb_gain
+            rg = data["wb"][:, 0] / red_gain[0]
+            bg = data["wb"][:, 2] / blue_gain[0]
+            aug_g = torch.rand(b) * r + rgb_gain[0] - 0.9
+            aug_r = torch.rand(b) * r + rg * (1+aug_g) - 1.1
+            aug_b = torch.rand(b) * r + bg * (1+aug_g) - 1.1
+        elif 'augv2' in command:
+            # v2，相信原数据颜色的准确性，保守派作风
+            aug_g = torch.clamp(torch.randn(b) * r, 0, 4*u)
+            aug_r = torch.clamp((1+torch.randn(b)*r) * (1+aug_g) - 1, 0, 4*u)
+            aug_b = torch.clamp((1+torch.randn(b)*r) * (1+aug_g) - 1, 0, 4*u)
 
+    # 保证非负
+    daug, _ = torch.min(torch.stack((aug_r, aug_g, aug_b)), dim=0)
+    daug[daug>0] = 0
+    aug_r = (1+aug_r) / (1+daug) - 1
+    aug_g = (1+aug_g) / (1+daug) - 1
+    aug_b = (1+aug_b) / (1+daug) - 1
+    if numpy:
+        aug_r = np.squeeze(aug_r.numpy())
+        aug_g = np.squeeze(aug_g.numpy())
+        aug_b = np.squeeze(aug_b.numpy())
     return aug_r, aug_g, aug_b
 
 def raw_wb_aug(noisy, gt, aug_wb=None, camera_type='SonyA7S2', ratio=1, ori=True, iso=None):
@@ -565,11 +590,14 @@ def raw_wb_aug(noisy, gt, aug_wb=None, camera_type='SonyA7S2', ratio=1, ori=True
         noisy = noisy * (p['wp'] - p['bl'])
         # 补噪声
         daug = -np.minimum(np.min(aug_wb), 0)
+        # aug_wb = aug_wb + daug
         if daug == 0:
             # 只有增益的话很好处理，叠加泊松分布就行
             dy = gt * aug_wb.reshape(-1,1,1)    # 我考虑过这里dy和dn要不要量化一下，感觉不量化对多样性更友好
             dn = np.random.poisson(dy/p['K']).astype(np.float32) * p['K']
         else:
+            # BiSNA，折中方案，不好讲故事，弃疗了
+            raise NotImplementedError
             # 存在减益的话就很麻烦，需要考虑read noise并且补齐分布
             scale = 1 - daug
             # 要保证dyn是非负的
@@ -619,13 +647,16 @@ def raw_wb_aug_torch(noisy, gt, aug_wb=None, camera_type='IMX686', ratio=1, ori=
         noisy = noisy * (p['wp'] - p['bl'])
         # 补噪声
         daug = -np.minimum(np.min(aug_wb), 0)
-        daug = torch.from_numpy(np.array(daug)).to(DEVICE)
-        aug_wb = torch.from_numpy(aug_wb).to(DEVICE)
+        daug = torch.from_numpy(np.array(daug)).to(noisy.device)
+        aug_wb = torch.from_numpy(aug_wb).to(noisy.device)
         dy = gt * aug_wb.reshape(-1,1,1)    # 我考虑过这里dy和dn要不要量化一下，感觉不量化对多样性更友好
         if daug == 0:
             # 只有增益的话很好处理，叠加泊松分布就行
             dn = tdist.Poisson(dy/p['K']).sample() * p['K']
         else:
+            # BiSNA，折中方案，不好讲故事，弃疗了
+            warnings.warn('You are using BiSNA!!!')
+            raise NotImplementedError
             # 存在减益的话就很麻烦，需要考虑read noise并且补齐分布
             scale = 1 - daug
             # 要保证dyn是非负的
@@ -652,6 +683,35 @@ def raw_wb_aug_torch(noisy, gt, aug_wb=None, camera_type='IMX686', ratio=1, ori=
         noisy *= ratio
     
     return noisy, gt
+
+def SNA_torch(gt, aug_wb, camera_type='IMX686', ratio=1, black_lr=False, ori=True, iso=None):
+    suffix_iso = f'_{iso}' if iso is not None else ''
+    p = get_camera_noisy_params_max(camera_type + suffix_iso)
+    if p is None:
+        assert camera_type == 'SonyA7S2'
+        camera_type += '_lowISO' if iso<=1600 else '_highISO'
+        p = get_camera_noisy_params(camera_type=camera_type)
+        # 根据最小二乘法得到的噪声参数回归模型采样噪声参数
+        p['K'] = 0.0009546 * iso * (1 + np.random.uniform(low=-0.01, high=+0.01)) - 0.00193
+    else:
+        p['K'] = p['Kmax'] * (1 + np.random.uniform(low=-0.01, high=+0.01)) # 增加一些扰动，以防测的不准
+    
+    # 默认pattern为RGGB！(通道rgbg排列)
+    gt = gt * (p['wp'] - p['bl']) / ratio
+    # 补噪声
+    aug_wb = torch.from_numpy(aug_wb).to(gt.device)
+    dy = gt * aug_wb.reshape(-1,1,1)    # 我考虑过这里dy和dn要不要量化一下，感觉不量化对多样性更友好
+    # 只有增益的话很好处理，叠加泊松分布就行
+    dn = tdist.Poisson(dy/p['K']).sample() * p['K']
+    # 贴黑图的，所以抛去gt中多算的一份泊松分布
+    if black_lr: dy = dy - gt
+    dy = dy * ratio / (p['wp'] - p['bl'])
+    dn = dn / (p['wp'] - p['bl'])
+
+    if ori is False:
+        dn *= ratio
+    
+    return dn, dy
 
 # @ fn_timer
 def generate_noisy_obs(y, camera_type=None, wp=16383, noise_code='p', param=None, MultiFrameMean=1, ori=False, clip=False):
@@ -686,7 +746,7 @@ def generate_noisy_obs(y, camera_type=None, wp=16383, noise_code='p', param=None
         # 行噪声需要使用行的维度h，[1,c,h,w]所以-2是h
         noisy_row = np.random.randn(y.shape[-3], y.shape[-2], 1).astype(np.float32) * p['sigR']/MFM if use_R else 0
         noisy_q = np.random.uniform(low=-0.5, high=0.5, size=y.shape) if use_Q else 0
-        noisy_bias = p['bias'] if use_D else 0
+        noisy_bias = p['bias'].reshape(-1,1,1) if use_D else 0
     else:
         noisy_read = 0
         noisy_row = 0
@@ -732,7 +792,7 @@ def generate_noisy_torch(y, camera_type=None,  noise_code='p', param=None, Multi
     # 使用行噪声
     noisy_row = torch.randn(y.shape[-3], y.shape[-2], 1, device=DEVICE) * p['sigR'] / MFM if use_R else 0
     noisy_q = (torch.rand(y.shape, device=DEVICE) - 0.5) * p['q'] * (p['wp'] - p['bl']) if use_Q else 0
-    noisy_bias = p['bias'] if use_D else 0
+    noisy_bias = torch.from_numpy(p['bias'].reshape(-1,1,1)) if use_D else 0
 
     # 归一化回[0, 1]
     z = (noisy_shot + noisy_read + noisy_row + noisy_q + noisy_bias) / (p['wp'] - p['bl'])
@@ -750,7 +810,7 @@ class HighBitRecovery:
         self.camera_type = camera_type
         self.noise_code = noise_code
         self.param = param
-        self.jitter = perturb
+        self.perturb = perturb
         self.factor = factor
         self.float = float
         self.lut = {}
@@ -761,9 +821,9 @@ class HighBitRecovery:
                 bias = 0
             else:
                 bias = np.mean(blc_mean[iso])
-            if self.jitter:
-                r = 0.25
-                bias += np.random.uniform(-r, r)
+            if self.perturb:
+                sigma_t = 0.1
+                bias += np.random.randn() * sigma_t
             self.lut[iso] = self.HB2LB_LUT(iso, bias)
     
     def HB2LB_LUT(self, iso, bias=0, param=None):

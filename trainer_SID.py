@@ -1,6 +1,5 @@
 import os
 import time
-import random
 from torch.optim import Adam, lr_scheduler
 from data_process import *
 from utils import *
@@ -13,12 +12,21 @@ class SID_Trainer(Base_Trainer):
         super().__init__()
         # model
         self.net = globals()[self.arch['name']](self.arch)
+        # Raw2RGB
+        if 'isp' in self.dst['command'].lower():
+            self.arch_isp = self.args['arch_isp']
+            self.isp = globals()[self.arch_isp['name']](self.arch_isp)
+            model_path = os.path.join(f'{self.fast_ckpt}/ISP_CNN.pth')
+            model_dict = torch.load(model_path, map_location=self.device)
+            self.isp = load_weights(self.isp, model_dict, by_name=False)
+            self.isp = self.isp.to(self.device)
+            log('Use the ISP_CNN.pth from RViDeNet as ISP...')
         # load weight
         if self.hyper['last_epoch']:    # 不是初始化
             try:
-                model_path = os.path.join(f'./checkpoints/{self.model_name}_best_model.pth')
+                model_path = os.path.join(f'{self.fast_ckpt}/{self.model_name}_best_model.pth')
                 if not os.path.exists(model_path):
-                    model_path = os.path.join(f'./checkpoints/{self.model_name}_last_model.pth')
+                    model_path = os.path.join(f'{self.fast_ckpt}/{self.model_name}_last_model.pth')
                 model = torch.load(model_path, map_location=self.device)
                 self.net = load_weights(self.net, model, by_name=True)
             except:
@@ -51,6 +59,7 @@ class SID_Trainer(Base_Trainer):
         last_eval_epoch = self.hyper['last_epoch'] // self.hyper['plot_freq']
         self.train_psnr = AverageMeter('PSNR', ':2f', last_epoch=self.hyper['last_epoch'])
         self.eval_psnr = AverageMeter('PSNR', ':2f', last_epoch=last_eval_epoch)
+        self.eval_ssim = AverageMeter('SSIM', ':4f')
         self.eval_psnr_lr = AverageMeter('PSNR', ':2f')
         self.eval_ssim_lr = AverageMeter('SSIM', ':4f')
         self.eval_psnr_dn = AverageMeter('PSNR', ':2f')
@@ -180,29 +189,30 @@ class SID_Trainer(Base_Trainer):
                 cv2.imwrite(filename, np.uint8(temp_img*255))
 
             # fast eval
-            if (self.hyper['last_epoch']+epoch) % self.hyper['plot_freq'] == 0:
+            if epoch % self.hyper['plot_freq'] == 0:
                 log(f"learning_rate: {lr:.3e}")
                 self.dst_eval.fast_eval(on=True)
                 self.eval(epoch=epoch)
                 self.dst_eval.fast_eval(on=False)
                 model_dict = self.net.module.state_dict() if self.multi_gpu else self.net.state_dict()
-                torch.save(model_dict, f'./checkpoints/{self.model_name}_last_model.pth')
+                torch.save(model_dict, f'{self.fast_ckpt}/{self.model_name}_last_model.pth')
             
             # reload best model each period
             num_of_epochs = self.hyper['stop_epoch'] - self.hyper['last_epoch']
             T = self.hyper['T'] if 'T' in self.hyper else 1 
             period = num_of_epochs//T
             if (self.hyper['last_epoch']+epoch) % period == 0:
-                model_path = os.path.join(f'./checkpoints/{self.model_name}_best_model.pth')
+                model_path = os.path.join(f'{self.fast_ckpt}/{self.model_name}_best_model.pth')
                 if os.path.exists(model_path):
                     model = torch.load(model_path, map_location=self.device)
-                    self.net = load_weights(self.net, model, by_name=True, multi_gpu=self.multi_gpu)
+                    self.net = load_weights(self.net, model, by_name=True)
                     log(f'Successfully reload best model (Eval PSNR:{self.best_psnr})',
                         log=f'./logs/log_{self.model_name}.log')
 
     def eval(self, epoch=-1):
         self.net.eval()
         self.eval_psnr.reset()
+        self.eval_ssim.reset()
         self.eval_psnr_lr.reset()
         self.eval_psnr_dn.reset()
         self.eval_ssim_lr.reset()
@@ -228,6 +238,7 @@ class SID_Trainer(Base_Trainer):
                 ccm = data['ccm'][0].numpy()
                 name = data['name'][0]
                 ISO = data['ISO'].item()
+                exp = data['ExposureTime'].item()
                 # print(ISO)
 
                 with torch.no_grad():
@@ -272,8 +283,7 @@ class SID_Trainer(Base_Trainer):
                     res = quality_assess(output, target, data_range=255)
                     raw_metrics = [res['PSNR'], res['SSIM']]
                     self.eval_psnr.update(res['PSNR'])
-                    self.eval_psnr_dn.update(res['PSNR'])
-                    self.eval_ssim_dn.update(res['SSIM'])
+                    self.eval_ssim.update(res['SSIM'])
                     metrics[name] = raw_metrics
                     # convert raw to rgb
                     if save_plot:
@@ -284,6 +294,8 @@ class SID_Trainer(Base_Trainer):
                         else:
                             raw_metrics = [self.infos[k]['PSNR_raw'], self.infos[k]['SSIM_raw']] + raw_metrics
                         if epoch > 0:
+                            # self.multiprocess_plot(imgs_lr, imgs_dn, imgs_hr, 
+                            #         wb, ccm, name, save_plot, epoch, raw_metrics, k)
                             pool.append(threading.Thread(target=self.multiprocess_plot, args=(imgs_lr, imgs_dn, imgs_hr, 
                                     wb, ccm, name, save_plot, epoch, raw_metrics, k)))
                             pool[k].start()
@@ -296,7 +308,9 @@ class SID_Trainer(Base_Trainer):
                             else:
                                 inputs = np.load(infos['path_npy_in'])
                                 target = np.load(infos['path_npy_gt'])
-                            output = raw2rgb_rawpy(imgs_dn, wb=wb, ccm=ccm)
+                            if 'isp' not in self.dst['command'].lower():
+                                output = raw2rgb_rawpy(imgs_dn, wb=wb, ccm=ccm)
+                            # raw_metrics = None # 用RGB metrics
                             task_list.append(
                                 pool.submit(plot_sample, inputs, output, target, 
                                     filename=name, save_plot=save_plot, epoch=epoch,
@@ -316,25 +330,31 @@ class SID_Trainer(Base_Trainer):
             else:
                 pool.shutdown(wait=True)
                 for task in as_completed(task_list):
-                    psnr, ssim = task.result()
+                    psnr, ssim, name = task.result()
+                    metrics[name] = (psnr[1], ssim[1])
+                    # if name[0] == '1' or self.dstname=='ELD':
                     self.eval_psnr_lr.update(psnr[0])
                     self.eval_psnr_dn.update(psnr[1])
                     self.eval_ssim_lr.update(ssim[0])
                     self.eval_ssim_dn.update(ssim[1])
+        else:
+            self.eval_psnr_dn = self.eval_psnr
+            self.eval_ssim_dn = self.eval_ssim
 
         # 超过最好记录才保存
         if self.eval_psnr_dn.avg >= self.best_psnr and epoch > 0:
             self.best_psnr = self.eval_psnr_dn.avg
             log(f"Best PSNR is {self.best_psnr} now!!")
             model_dict = self.net.module.state_dict() if self.multi_gpu else self.net.state_dict()
-            torch.save(model_dict, f'./checkpoints/{self.model_name}_best_model.pth')
+            torch.save(model_dict, f'{self.fast_ckpt}/{self.model_name}_best_model.pth')
 
         log(f"Epoch {epoch}: PSNR={self.eval_psnr.avg:.2f}\n"
             +f"psnrs_lr={self.eval_psnr_lr.avg:.2f}, psnrs_dn={self.eval_psnr_dn.avg:.2f}"
             +f"\nssims_lr={self.eval_ssim_lr.avg:.4f}, ssims_dn={self.eval_ssim_dn.avg:.4f}",
             log=f'./logs/log_{self.model_name}.log')
-        with open(metrics_path, 'wb') as f:
-            pkl.dump(metrics, f)
+        if epoch < 0:
+            with open(metrics_path, 'wb') as f:
+                pkl.dump(metrics, f)
         savefile = os.path.join(self.sample_dir, f'{self.model_name}_eval_psnr.jpg')
         logfile = os.path.join(self.sample_dir, f'{self.model_name}_eval_psnr.pkl')
         if epoch > 0:
@@ -395,19 +415,20 @@ class SID_Trainer(Base_Trainer):
                 aug_r, aug_g, aug_b = get_aug_param_torch(data, b=b, command=self.dst['command'])
                 aug_wbs = torch.stack((aug_r, aug_g, aug_b, aug_g), dim=1)
                 data['rgb_gain'] = torch.ones(b) * (aug_g + 1)
+                data['wb'] = data['wb'][0].repeat(b, 1)
                 for i in range(b):
                     aug_wb = aug_wbs[i].numpy()
+                    if data['black_lr'][0]: aug_wb += 1
                     dgain = data['ratio'][i]
+                    imgs_lr[i] = imgs_lr[i] if self.dst['ori'] else imgs_lr[i] * dgain
                     if np.abs(aug_wb).max() != 0:
-                        data['wb'] *= (1+aug_wb) / (1+aug_g[i])
-                        if self.ratiofix:
-                            data['ratio'][i] /= (1+aug_g[i])
+                        data['wb'][i] *= (1+aug_wb[1]) / (1+aug_wb)
                         iso = data['ISO'][i//self.dst['crop_per_image']].item()
-                        imgs_lr[i], imgs_hr[i] = raw_wb_aug_torch(imgs_lr[i], imgs_hr[i], iso=iso, ratiofix=self.ratiofix,
-                            aug_wb=aug_wb, camera_type=self.dst['camera_type'], ratio=dgain, ori=self.dst['ori'])
-                    else:
-                        imgs_lr[i] = imgs_lr[i] if self.dst['ori'] else imgs_lr[i] * dgain
-                
+                        dn, dy = SNA_torch(imgs_hr[i], aug_wb, iso=iso, ratio=dgain, black_lr=data['black_lr'][0],
+                            camera_type=self.dst['camera_type'], ori=self.dst['ori'])
+                        imgs_lr[i] = imgs_lr[i] + dn 
+                        imgs_hr[i] = imgs_hr[i] + dy
+
             elif self.args['dst_train']['dataset'] == 'Raw_Dataset':
                 data['ratio'] = torch.ones(b, device=self.device)
                 # 人工加噪声，注意，这里统一时间的视频应该共享相同的噪声参数！！
@@ -432,7 +453,8 @@ class SID_Trainer(Base_Trainer):
             data['rgb_gain'] = data['rgb_gain'].type(torch.FloatTensor).to(self.device).view_as(ratio)
         
         if self.dst['clip']:
-            imgs_lr = imgs_lr.clamp(0, 1)
+            lb = -100 if 'HB' in self.dst['command'] else 0
+            imgs_lr = imgs_lr.clamp(lb, 1)
             imgs_hr = imgs_hr.clamp(0, 1)
         return imgs_lr, imgs_hr, ratio
 
@@ -481,7 +503,6 @@ if __name__ == '__main__':
             trainer.dst_eval.ratio_list=[dgain]
             trainer.dst_eval.recheck_length()
             metrics = trainer.eval(-1)
-            print(metrics)
 
     if 'test' in trainer.mode:
         # SID
@@ -495,4 +516,4 @@ if __name__ == '__main__':
             log(f'SID Datasets: Dgain={dgain}',log=f'./logs/log_{trainer.model_name}.log')
             trainer.dst_eval.change_eval_ratio(ratio=dgain)
             metrics = trainer.eval(-1)
-            print(metrics)
+    log(f'Metrics have been saved in ./metrics/{trainer.model_name}_metrics.pkl')

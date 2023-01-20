@@ -1,6 +1,4 @@
 import pickle
-from numpy.core.numeric import argwhere
-from numpy.lib.financial import rate
 import torch
 import numpy as np
 import cv2
@@ -32,6 +30,7 @@ class RealBase_Dataset(Dataset):
         self.args['dstname'] = 'SID'
         self.args['camera_type'] = 'SonyA7S2'
         self.args['mode'] = 'train'
+        self.args['croptype'] = 'non-overlapped'
         self.args['command'] = ''
         self.args['wp'] = 16383
         self.args['bl'] = 512
@@ -49,30 +48,23 @@ class RealBase_Dataset(Dataset):
         self.darkshading = {}
         self.noiseparam = {}
         self.blc_mean = {}
-        # if 'darkshading' in self.args['command']:
+        self.naive = False if '++' in self.args['command'] else True
         for i in range(self.length):
             iso = self.infos[i]['ISO']
             # read darkshaidng
-            if os.path.exists(os.path.join(self.args['ds_dir'], f'darkshading_BLE.pkl')):
-                with open(os.path.join(self.args['ds_dir'], f'darkshading_BLE.pkl'), 'rb') as f:
-                    self.blc_mean = pkl.load(f)
-                self.get_darkshading(iso)
-                # self.get_darkshading(self.infos[i]['ISO'])
-                # iso = self.infos[i]['ISO']
-                # self.blc_mean[iso] = raw2bayer(self.darkshading[iso], norm=False, clip=False, 
-                #                         wp=self.args['wp']-self.args['bl'], bl=0)
-                # self.blc_mean[iso] = np.mean(self.blc_mean[iso])
-            # if 'darkshading2' in self.args['command'] and iso not in self.noiseparam:
-            #     nlf_path = os.path.join(self.args['ds_dir'], f'noiseparam-iso-{iso}.h5')
-            #     f = h5py.File(nlf_path, 'r')
-            #     self.noiseparam[iso] = {
-            #         'Kmax':0.0009563*iso, 'lam':np.mean(f['lam']), 
-            #         'sigGs':np.mean(f['sigmaGs']), 'sigGssig':np.std(f['sigmaGs']),
-            #         'sigTL':np.mean(f['sigmaTL']), 'sigTLsig':np.std(f['sigmaTL']),
-            #         'sigR':np.mean(f['sigmaR']), 'sigRsig':np.std(f['sigmaR']),
-            #         'bias':0, 'biassig':np.std(f['meanRead']),
-            #         'q':1/(2**14), 'wp':16383, 'bl':512
-            #         }
+            if 'darkshading' in self.args['command']:
+                self.get_darkshading(iso, naive=self.naive)
+                if 'darkshading2' in self.args['command'] and iso not in self.noiseparam:
+                    nlf_path = os.path.join(self.args['ds_dir'], f'noiseparam-iso-{iso}.h5')
+                    f = h5py.File(nlf_path, 'r')
+                    self.noiseparam[iso] = {
+                        'Kmax':0.0009563*iso, 'lam':np.mean(f['lam']), 
+                        'sigGs':np.mean(f['sigmaGs']), 'sigGssig':np.std(f['sigmaGs']),
+                        'sigTL':np.mean(f['sigmaTL']), 'sigTLsig':np.std(f['sigmaTL']),
+                        'sigR':np.mean(f['sigmaR']), 'sigRsig':np.std(f['sigmaR']),
+                        'bias':0, 'biassig':np.std(f['meanRead']),
+                        'q':1/(2**14), 'wp':16383, 'bl':512
+                        }
 
     def lr_idremap_table_init(self):
         self.lr_idremap_table = [None] * self.length
@@ -218,23 +210,64 @@ class RealBase_Dataset(Dataset):
 
         return crops
 
-    def get_darkshading(self, iso, num=None, remake=False):
+    def get_BLE_long(self, iso, exp=10000, naive=True):
+        if naive:
+            return self.blc_mean[iso]
+        else:
+            branch = '_highISO' if iso>1600 else '_lowISO'
+            kt = np.poly1d(self.blc_mean[f'kt{branch}_long'])
+            # kt = self.blc_mean[iso]['k']
+            BLE = kt(iso) * exp
+            return BLE
+
+    def get_darkshading(self, iso, exp=25, naive=True, num=None, remake=False):
+        branch = '_highISO' if iso>1600 else '_lowISO'
         if iso not in self.darkshading or remake is True:
             ds_path = os.path.join(self.args['ds_dir'], f'darkshading-iso-{iso}.npy')
-            if False: # naive darkshading
-                self.darkshading[iso] = np.load(ds_path)
-            else: # linear model darkshading
-                # log(f'You are using fake darkshading-iso-{iso}.npy (Linear Regression!!)')
-                branch = '_highISO' if iso>1600 else '_lowISO'
-                # if num is not None:
-                #     ds_k = np.load(f'/data/SonyA7S2/ds_ablation/darkshading{branch}_{num}_k.npy')
-                #     ds_b = np.load(f'/data/SonyA7S2/ds_ablation//darkshading{branch}_{num}_b.npy')
-                # else:   
-                ds_k = np.load(os.path.join(self.args['ds_dir'], f'darkshading{branch}_k.npy'))
-                ds_b = np.load(os.path.join(self.args['ds_dir'], f'darkshading{branch}_b.npy'))
-                self.darkshading[iso] = ds_k * iso + ds_b + self.blc_mean[iso]
+            ds_k = np.load(os.path.join(self.args['ds_dir'], f'darkshading{branch}_k.npy'))
+            ds_b = np.load(os.path.join(self.args['ds_dir'], f'darkshading{branch}_b.npy'))
+            if naive: # naive linear darkshading - BLE(ISO)
+                with open(os.path.join(self.args['ds_dir'], f'darkshading_BLE.pkl'), 'rb') as f:
+                    self.blc_mean = pkl.load(f)
+                BLE = self.blc_mean[iso]
+            else: # new linear darkshading - BLE(ISO, t)
+                with open(os.path.join(self.args['ds_dir'], f'BLE_t.pkl'),'rb') as f:
+                    self.blc_mean = pickle.load(f)
+                # BLE bias only here
+                # kt = np.poly1d(self.blc_mean[f'kt{branch}'])
+                BLE = self.blc_mean[iso]['b'] # + kt(iso) * exp
+            # D_{ds} = D_{FPNk} + D_{FPNb} + BLE(ISO, t)
+            self.darkshading[iso] = ds_k * iso + ds_b + BLE
 
-        return self.darkshading[iso]
+        if naive:
+            return self.darkshading[iso]
+        else:
+            kt = np.poly1d(self.blc_mean[f'kt{branch}'])
+            BLE = kt(iso) * exp
+            return self.darkshading[iso] + BLE
+    
+    def hot_check(self, name_id):
+        hot_ids = [72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 
+        90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 
+        109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 
+        126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 
+        143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 
+        160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 170, 171, 172, 173, 174, 175, 176, 
+        177, 183, 184, 185, 186, 187, 188, 189, 190, 191, 192, 193, 194, 195, 196, 197, 198, 
+        199, 200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 211, 212, 213, 214, 215, 216, 
+        217, 218, 219, 220, 221, 222, 223, 224, 225, 226, 227, 228, 230, 231, 232]
+
+        hot = True if int(name_id[2:5]) in hot_ids else False
+        return hot
+    
+    def record_bias_frames(self):
+        log('Recording Bias Frames...')
+        self.black_dirs = sorted(os.listdir(self.args['bias_dir']), key=lambda x: int(x))
+        self.legalISO = np.array([int(dirname) for dirname in self.black_dirs])
+        self.black_dirs = [os.path.join(self.args['bias_dir'], dirname) for dirname in self.black_dirs]
+        self.blacks = [None] * len(self.legalISO)
+        for i in range(len(self.legalISO)):
+            self.blacks[i] = [os.path.join(self.black_dirs[i], filename) for filename in os.listdir(self.black_dirs[i])]
     
     def remap_darkshading(self, num=None):
         log(f'Using {num} to remap dark shading')
@@ -262,6 +295,23 @@ class SID_Dataset(RealBase_Dataset):
     def initialization(self):
         super().initialization()
         if self.args['mode'] == 'train':
+            # 只使用有限范围的ISO
+            if 'limitediso' in self.args['command'].lower():
+                new_infos = []
+                lower = 400
+                upper = 6400
+                for i in range(self.length):
+                    if lower <= self.infos[i]['ISO'] <= upper:
+                        new_infos.append(self.infos[i])
+                self.infos = new_infos
+            # 只使用ELD验证集会出现的ISO
+            elif 'exactiso' in self.args['command'].lower():
+                new_infos = []
+                exactiso_list = [800, 1600, 3200]
+                for i in range(self.length):
+                    if self.infos[i]['ISO'] in exactiso_list:
+                        new_infos.append(self.infos[i])
+                self.infos = new_infos
             self.length = len(self.infos)
             self.lr_idremap_table_init()
         else:
@@ -298,19 +348,20 @@ class SID_Dataset(RealBase_Dataset):
         data['ccm'] = self.infos[idx]['ccm']
         data['name'] = f"{self.infos[idx]['name'][:5]}_{self.infos[idx]['ratio']}"
         data['ISO'] = self.infos[idx]['ISO']
-        data['ExposureTime'] = self.infos[idx]['ExposureTime']
+        data['ExposureTime'] = self.infos[idx]['ExposureTime'] * 1000
         
         hr_raw = np.array(dataload(self.infos[idx]['long'])).reshape(self.H,self.W)
         lr_id = self.get_lr_id(idx) if self.args['mode']=='train' else 0
         lr_raw = np.array(dataload(self.infos[idx]['short'][lr_id])).reshape(self.H,self.W)
         data['ratio'] = self.infos[idx]['ratio'][lr_id]
+        data['exp'] = data['ExposureTime'] / data['ratio']
 
         if 'darkshading' in self.args['command']:
-            lr_raw = lr_raw - self.get_darkshading(data['ISO'])
+            lr_raw = lr_raw - self.get_darkshading(iso=data['ISO'], exp=data['exp'], naive=self.naive)
+            if 'd' in self.args['noise_code']:
+                lr_raw = lr_raw + self.get_darkshading(iso=data['ISO'], exp=data['exp'], naive=self.naive).mean()
             if 'darkshading2' in self.args['command'] and self.args["mode"] == 'train':
-                # SID配对数据训练的时候都要减
-                hr_raw = hr_raw - self.get_darkshading(data['ISO'])
-                # lr_raw += np.random.randn() * self.noiseparam[data['ISO']]['biassig']
+                lr_raw += np.random.randn() * self.noiseparam[data['ISO']]['biassig']
         elif 'blc' in self.args['command'] and 'HB' not in self.args['command']:
             # 只使用均值矫正
             lr_raw = lr_raw - self.blc_mean[data['ISO']]
@@ -332,7 +383,9 @@ class SID_Dataset(RealBase_Dataset):
             lr_crops *= data['ratio']
 
         if self.args['clip']:
-            lr_crops = lr_crops.clip(0, 1)
+            # -100 -> -inf
+            lb = -100 if 'HB' in self.args['command'] else 0
+            lr_crops = lr_crops.clip(lb, 1)
 
         data["lr"] = np.ascontiguousarray(lr_crops)
         data["hr"] = np.ascontiguousarray(hr_crops)
@@ -355,6 +408,17 @@ class Mix_Dataset(SID_Dataset):
             log('Warning! You have not choose the version of SignalAug! Use default(v3) version...')
             raise NotImplementedError
             # self.args['command'] += 'aug_v3'
+        self.record_bias_frames()
+        self.HBR = HighBitRecovery(camera_type=self.args['camera_type'], noise_code=self.args['noise_code'])
+        if 'darkshading' in self.args['command']:
+            # darkshaidng会矫正输入，不能算减去的分布
+            self.HBR.get_lut(self.legalISO, blc_mean=None)
+        elif 'blc' in self.args['command']:
+            # 只使用均值矫正
+            self.HBR.get_lut(self.legalISO, self.blc_mean)
+        else:
+            # 假装不知道有bias这回事
+            self.HBR.get_lut(self.legalISO, blc_mean=None)
 
     def __getitem__(self, idx):
         data = {}
@@ -363,18 +427,29 @@ class Mix_Dataset(SID_Dataset):
         data['ccm'] = self.infos[idx]['ccm']
         data['name'] = self.infos[idx]['name']
         data['ISO'] = self.infos[idx]['ISO']
-        data['ExposureTime'] = self.infos[idx]['ExposureTime']
+        data['ExposureTime'] = self.infos[idx]['ExposureTime'] * 1000
         
         hr_raw = np.array(dataload(self.infos[idx]['long'])).reshape(self.H,self.W)
-        lr_id = np.random.randint(len(self.infos[idx]['short'])) if self.args['mode']=='train' else 0
-        lr_raw = np.array(dataload(self.infos[idx]['short'][lr_id])).reshape(self.H,self.W)
-        dgain = self.infos[idx]['ratio'][lr_id]
+        data['black_lr'] = True if 'HB' in self.args['command'] and not np.random.randint(4) else False
+        if data['black_lr']:
+            # SNA+黑图
+            iso_index = np.argmin(np.abs(self.legalISO-data['ISO']))
+            lr_id = np.random.randint(len(self.blacks[iso_index])) if self.args['mode']=='train' else 0
+            if 'lr10' in self.args['command']:
+                lr_id = np.random.randint(10)
+            lr_raw = rawpy.imread(self.blacks[iso_index][lr_id]).raw_image_visible
+            dgain = 400
+        else:
+            lr_id = np.random.randint(len(self.infos[idx]['short'])) if self.args['mode']=='train' else 0
+            lr_raw = np.array(dataload(self.infos[idx]['short'][lr_id])).reshape(self.H,self.W)
+            dgain = self.infos[idx]['ratio'][lr_id]
+        
+        data['exp'] = data['ExposureTime'] / dgain
 
         if 'darkshading' in self.args['command']:
-            lr_raw = lr_raw - self.get_darkshading(data['ISO'])
-            if 'darkshading2' in self.args['command']:
-                hr_raw = hr_raw - self.get_darkshading(data['ISO'])
-                # lr_raw += np.random.randn() * self.noiseparam[data['ISO']]['biassig']
+            lr_raw = lr_raw - self.get_darkshading(iso=data['ISO'], exp=data['exp'], naive=self.naive)
+            if 'darkshading2' in self.args['command'] and self.args["mode"] == 'train':
+                lr_raw += np.random.randn() * self.noiseparam[data['ISO']]['biassig']
         elif 'blc' in self.args['command']:
             # 只使用均值矫正
             lr_raw = lr_raw - self.blc_mean[data['ISO']]
@@ -388,12 +463,21 @@ class Mix_Dataset(SID_Dataset):
             # 随机裁剪成crop_per_image份
             self.init_random_crop_point(mode=self.args['croptype'])
             hr_crops = self.random_crop(hr_imgs)
-            lr_crops = self.random_crop(lr_imgs)
+            if data['black_lr']:
+                self.init_random_crop_point(mode='random_crop')
+                lr_crops = self.random_crop(lr_imgs)
+                # 贴信号无关的read noise! HB矫正！
+                if 'preHB' not in self.args['command'] and 'HB' in self.args['command']:
+                    lr_crops = self.HBR.map(lr_crops, data['ISO'], norm=True)
+            else:
+                lr_crops = self.random_crop(lr_imgs)
             lr_shape = lr_crops.shape
             data['ratio'] = np.ones(lr_shape[0], dtype=np.float32) * dgain
             # cpu preprocess
             if self.args['gpu_preprocess'] is False:
-                aug_r, aug_g, aug_b = get_aug_param_torch(data, b=1, command=self.args['command'], numpy=True)
+                # not check yet, please use GPU
+                raise NotImplementedError
+                aug_r, aug_g, aug_b = get_aug_param_torch(data, b=1, numpy=True, camera_type=self.args['camera_type'])
                 aug_wb = np.array([aug_r, aug_g, aug_b, aug_g])
                 data['rgb_gain'] = np.ones(lr_shape[0], dtype=np.float32) * (aug_g + 1)
                 if np.abs(aug_wb).max() != 0:
@@ -442,16 +526,20 @@ class ELD_Dataset(RealBase_Dataset):
         self.get_shape()
         self.darkshading = {}
         self.blc_mean = {}
+        self.naive = False if '++' in self.args['command'] else True
         if 'darkshading' in self.args['command'] or 'blc'  in self.args['command']:
             for iso in self.iso_list:
                 # read darkshaidng
-                if os.path.exists(os.path.join(self.args['ds_dir'], f'darkshading_BLE.pkl')):
-                    with open(os.path.join(self.args['ds_dir'], f'darkshading_BLE.pkl'), 'rb') as f:
-                        self.blc_mean = pkl.load(f)
-                self.get_darkshading(iso)
-                self.blc_mean[iso] = raw2bayer(self.darkshading[iso], norm=False, clip=False, 
-                                        wp=self.args['wp']-self.args['bl'], bl=0)
-                self.blc_mean[iso] = np.mean(self.blc_mean[iso])
+                if self.naive:
+                    if os.path.exists(os.path.join(self.args['ds_dir'], f'darkshading_BLE.pkl')):
+                        with open(os.path.join(self.args['ds_dir'], f'darkshading_BLE.pkl'), 'rb') as f:
+                            self.blc_mean = pkl.load(f)
+                    self.get_darkshading(iso)
+                    self.blc_mean[iso] = raw2bayer(self.darkshading[iso], norm=False, clip=False, 
+                                            wp=self.args['wp']-self.args['bl'], bl=0)
+                    self.blc_mean[iso] = np.mean(self.blc_mean[iso])
+                else:
+                    self.get_darkshading(iso, naive=self.naive)
 
     def __len__(self):
         return self.length
@@ -512,13 +600,16 @@ class ELD_Dataset(RealBase_Dataset):
         data['wb'] = self.infos[scene_id][hr_id]['wb']
         data['ccm'] = self.infos[scene_id][hr_id]['ccm']
         data['name'] = f"scene-{scene_id+1:02d}_{self.infos[scene_id][lr_id]['name']}"
-        data['ExposureTime'] = self.infos[scene_id][hr_id]['ExposureTime']
+        data['ExposureTime'] = self.infos[scene_id][hr_id]['ExposureTime'] * 1000
+        data['exp'] = data['ExposureTime'] / data['ratio']
         
         hr_raw = np.array(dataload(self.infos[scene_id][hr_id]['data'])).reshape(self.H,self.W)
         lr_raw = np.array(dataload(self.infos[scene_id][lr_id]['data'])).reshape(self.H,self.W)
 
         if 'darkshading' in self.args['command']:
-            lr_raw = lr_raw - self.get_darkshading(data['ISO'])
+            lr_raw = lr_raw - self.get_darkshading(iso=data['ISO'], exp=data['exp'], naive=self.naive)
+            if 'd' in self.args['noise_code']:
+                lr_raw = lr_raw + self.get_darkshading(iso=data['ISO'], exp=data['exp'], naive=self.naive).mean()
         if 'blc' in self.args['command'] and 'HB' not in self.args['command']:
             lr_raw = lr_raw - self.blc_mean[data['ISO']]
 
@@ -533,7 +624,9 @@ class ELD_Dataset(RealBase_Dataset):
             lr_crops *= data['ratio']
 
         if self.args['clip']:
-            lr_crops = lr_crops.clip(0, 1)
+            # -100 -> -inf
+            lb = -100 if 'HB' in self.args['command'] else 0
+            lr_crops = lr_crops.clip(lb, 1)
             
         data["lr"] = np.ascontiguousarray(lr_crops)
         data["hr"] = np.ascontiguousarray(hr_crops)
@@ -594,107 +687,6 @@ class TestDataset(RealBase_Dataset):
         data['ratio'] = self.args['ratio']
         if self.args['clip']:
             data['data'] = data['data'].clip(0,1)
-
-        return data
-    
-class IMX686_Dataset(RealBase_Dataset):
-    def __init__(self, args=None):
-        super().__init__(args)
-        self.root_dir = self.args['root_dir']
-        self.suffix = '.' + self.args['suffix']
-        self.initialization()
-
-    
-    def default_args(self):
-        self.args = {}
-        self.args['root_dir'] = '/data/ScreenCamera/exdark3'
-        self.args['suffix'] = 'npy'
-        self.args['ori'] = True
-        self.args['ratio'] = 8
-        self.args['dstname'] = 'exdark3'
-        self.args['camera_type'] = 'IMX686'
-        self.args['mode'] = 'eval'
-        self.args['command'] = ''
-        self.args['wp'] = 1023
-        self.args['bl'] = 64
-        self.args['H'] = 3472
-        self.args['W'] = 4624
-        self.args['clip'] = False
-
-    def initialization(self):
-        try:
-            self.suffix = 'npy'
-            lr_dir = os.path.join(self.root_dir, 'npy', '6400', str(self.args['ratio']))
-            if os.path.exists(lr_dir) is False: raise IOError
-        except IOError:
-            log('You have no "npy" noisy data, we try to use rawpy read dngs')
-            raise IOError
-
-        hr_dir = os.path.join(self.root_dir, 'npy', 'GT')
-        self.hr_dir = hr_dir
-        self.length = len(hr_dir) # length为场景数
-        # 根据场景获取数据索引
-        self.datapaths = []
-        metadata_file = os.path.join(self.root_dir, f'metadata_{self.args["dstname"]}_gt.pkl')
-        with open(metadata_file, 'rb') as f:
-            self.metadatas = pickle.load(f)
-            for i in range(len(self.metadatas)):
-                self.metadatas[i]['wb'] = np.array(self.metadatas[i]['wb'])
-        # 地址分割
-        for scene_id in sorted(os.listdir(lr_dir)):
-            # 获得不同dgain的地址
-            lr_paths = []
-            for name in os.listdir(os.path.join(lr_dir, scene_id)):
-                lr_path = os.path.join(lr_dir, scene_id, name)
-                lr_paths.append(lr_path)
-            # 汇总
-            datapath={
-                'name': scene_id,
-                'lr': lr_paths,
-                'hr': os.path.join(hr_dir, f'{scene_id}.npy'),
-                'metadata': self.metadatas[int(scene_id)],
-                }
-            self.datapaths.append(datapath)
-        log(f'Loading darkshading into buffer...')
-        self.darkshading = np.load(os.path.join(self.args['ds_dir'], f'darkshading-iso-6400.npy'))
-
-    def __len__(self):
-        return len(self.datapaths)
-    
-    def change_eval_ratio(self, idx=None, ratio=None):
-        ratio_list = [1, 2, 4, 8]
-        assert idx is not None or ratio is not None, 'Are you kidding me?'
-        if idx is not None:
-            assert idx in [0,1,2,3], 'idx must in [0,1,2]'
-            ratio = ratio_list[idx]
-        elif ratio is not None:
-            assert int(ratio) in ratio_list, 'ratio must in [1, 2, 4, 8]'
-            # idx = int(math.log(int(ratio))) 
-            ratio = int(ratio)
-
-        self.args['ratio'] = ratio
-        self.initialization()
-        log(f'Eval ratio {ratio}')
-    
-    def __getitem__(self, idx):
-        data = {}
-        hr_raw = np.load(self.datapaths[idx]['hr'])
-        lr_raw = np.load(self.datapaths[idx]['lr'][0])
-        if 'darkshading' in self.args['command']:
-            lr_raw = lr_raw - self.darkshading
-        if 'blc' in self.args['command']:
-            lr_raw = rggb2bayer(bayer2rggb(lr_raw) - bayer2rggb(self.darkshading).mean(axis=(0,1)).reshape(1,1,4))
-        data['lr'] = raw2bayer(lr_raw, wp=self.args['wp'], bl=self.args['bl'], norm=True, clip=False)[None,]
-        data['hr'] = raw2bayer(hr_raw, wp=self.args['wp'], bl=self.args['bl'], norm=True, clip=True)[None,]
-        data['name'] = f"{self.args['dstname']}_{self.datapaths[idx]['name']}"
-        data['ratio'] = self.args['ratio']
-        data['ccm'] = self.metadatas[idx]['ccm']
-        data['wb'] = self.metadatas[idx]['wb']
-        data['ISO'] = 6400
-        if self.args['ori'] is False:
-            data['lr'] = data['lr'] * self.args['ratio']
-        if self.args['clip']:
-            data['lr'] = data['lr'].clip(0,1)
 
         return data
 

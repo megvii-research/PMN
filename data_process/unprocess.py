@@ -1,11 +1,10 @@
-from utils import fn_timer
 import numpy as np
 import torch
 import torch.distributions as tdist
 # from utils import fn_timer
 
 
-def random_ccm():
+def random_ccm(camera_type='IMX686'):
     """Generates random RGB -> Camera color correction matrices."""
     # # Takes a random convex combination of XYZ -> Camera CCMs.
     # xyz2cams = [[[1.0234, -0.2969, -0.2266],
@@ -31,14 +30,16 @@ def random_ccm():
     #                            [0.2126729, 0.7151522, 0.0721750],
     #                            [0.0193339, 0.1191920, 0.9503041]])
     # rgb2cam = torch.mm(xyz2cam, rgb2xyz)
-    # SonyA7S2 ccm's inv
-    rgb2cam = [[1.,0.,0.],
-               [0.,1.,0.],
-               [0.,0.,1.]]
-    # # RedMi K30 ccm's inv
-    # rgb2cam = [[0.61093086,0.31565922,0.07340994],
-    #             [0.09433191,0.7658969,0.1397712 ],
-    #             [0.03532438,0.3020709,0.6626047 ]]
+    if camera_type == 'SonyA7S2':
+        # SonyA7S2 ccm's inv
+        rgb2cam = [[1.,0.,0.],
+                [0.,1.,0.],
+                [0.,0.,1.]]
+    elif camera_type == 'IMX686':
+        # RedMi K30 ccm's inv
+        rgb2cam = [[0.61093086,0.31565922,0.07340994],
+                    [0.09433191,0.7658969,0.1397712 ],
+                    [0.03532438,0.3020709,0.6626047 ]]
     rgb2cam = torch.FloatTensor(rgb2cam)
     # # Normalizes each row.
     # rgb2cam = rgb2cam / torch.sum(rgb2cam, dim=-1, keepdim=True)
@@ -56,13 +57,21 @@ def random_ccm():
 #    blue_gain =  torch.FloatTensor(1).uniform_(1.5, 1.9)
 #    return rgb_gain, red_gain, blue_gain
 
-def random_gains():
+def random_gains(camera_type='SonyA7S2'):
     # return torch.FloatTensor(np.array([[1.],[1.],[1.]]))
     n = tdist.Normal(loc=torch.tensor([0.8]), scale=torch.tensor([0.1]))
     rgb_gain = 1.0 / n.sample()
-    red_gain = np.random.uniform(1.4, 2.3)
-    ployfit = [6.14381188, -3.65620261, 0.70205967]
-    blue_gain= ployfit[0] + ployfit[1] * red_gain + ployfit[2] * red_gain ** 2# + np.random.uniform(0, 0.4)
+    # SonyA7S2
+    if camera_type == 'SonyA7S2':
+        red_gain = np.random.uniform(1.75, 2.65)
+        ployfit = [14.65 ,-9.63942308, 1.80288462 ]
+        blue_gain= ployfit[0] + ployfit[1] * red_gain + ployfit[2] * red_gain ** 2# + np.random.uniform(0, 0.4)686
+    elif camera_type == 'IMX686':
+        red_gain = np.random.uniform(1.4, 2.3)
+        ployfit = [6.14381188, -3.65620261, 0.70205967]
+        blue_gain= ployfit[0] + ployfit[1] * red_gain + ployfit[2] * red_gain ** 2# + np.random.uniform(0, 0.4)
+    else:
+        raise NotImplementedError
     red_gain = torch.FloatTensor(np.array([red_gain])).view(1)
     blue_gain = torch.FloatTensor(np.array([blue_gain])).view(1)
     return rgb_gain, red_gain, blue_gain
@@ -158,13 +167,13 @@ def mosaic_GBRG(image):
     return out
 
 # @ fn_timer
-def unprocess(image, lock_wb=False, use_gpu=False):
+def unprocess(image, lock_wb=False, use_gpu=False, camera_type='IMX686'):
     """Unprocesses an image from sRGB to realistic raw data."""
     # Randomly creates image metadata.
-    rgb2cam = random_ccm()
+    rgb2cam = random_ccm(camera_type)
     cam2rgb = torch.inverse(rgb2cam)
     # rgb_gain, red_gain, blue_gain = random_gains() if lock_wb is False else torch.FloatTensor(np.array([[1.],[2.],[2.]]))
-    rgb_gain, red_gain, blue_gain = random_gains() if lock_wb is False else torch.FloatTensor(np.array(lock_wb))
+    rgb_gain, red_gain, blue_gain = random_gains(camera_type) if lock_wb is False else torch.FloatTensor(np.array(lock_wb))
     if use_gpu:
         rgb_gain, red_gain, blue_gain = rgb_gain.cuda(), red_gain.cuda(), blue_gain.cuda()
     if len(image.size()) >= 4:
@@ -173,7 +182,7 @@ def unprocess(image, lock_wb=False, use_gpu=False):
             temp = image[i]
             temp = inverse_smoothstep(temp)
             temp = gamma_expansion(temp)
-            temp = apply_ccm(temp)
+            temp = apply_ccm(temp, rgb2cam)
             temp = safe_invert_gains(temp, rgb_gain, red_gain, blue_gain, use_gpu)
             temp = torch.clamp(temp, min=0.0, max=1.0)
             res[i]= temp.clone()

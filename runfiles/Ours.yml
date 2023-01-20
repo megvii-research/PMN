@@ -1,18 +1,19 @@
 mode: 'evaltest'
 checkpoint: 'saved_model/'
-model_name: 'SonyA7S2_Mix_Unet'
+fast_ckpt: 'checkpoints/SonyA7S2'
+model_name: 'SonyA7S2_PMN_Unet'
 result_dir: 'images/'
 num_gpu: 1
 num_workers: 4
-save_plot: True
 brightness_correct: True
 
 dst: &base_dst
   root_dir: '/data/SID'
-  ds_dir: 'resources'
+  bias_dir: '/data/SonyA7S2/bias'
+  ds_dir: 'resources/SonyA7S2'
   dataset: 'SID_Dataset' 
   dstname: 'SID'
-  command: 'augv1.2, idremap, darkshading2'
+  command: 'augv2, idremap, darkshading2++, HB'
   camera_type: 'SonyA7S2'
   noise_code: 'pgrq'
   patch_size: 512
@@ -23,7 +24,7 @@ dst: &base_dst
   wp: 16383
   bl: 512
   ori: False
-  clip: False
+  clip: True
   gpu_preprocess: True
 dst_train:
   <<: *base_dst
@@ -64,6 +65,7 @@ hyper:
   step_size: 10
   stop_epoch : 1800
   T: 3
+  coldstart: False
   num_workers: 4
   num_gpus: 1
   save_freq: 10

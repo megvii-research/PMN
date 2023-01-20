@@ -11,11 +11,10 @@ class BaseParser():
         self.parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     def parse(self):
-        self.parser.add_argument('--runfile', '-f', default="runfiles/Ours.yml", type=Path, help="path to config")
-        self.parser.add_argument('--mode', '-m', default=None, type=str, help="train or test")
-        self.parser.add_argument('--save_plot', '-s', default=True, type=bool, help="save or not")
-        self.parser.add_argument('--debug', '-d', default=False, type=bool, help="debug or not")
-
+        self.parser.add_argument('--runfile', '-f', default="runfiles/SonyA7S2/input.yml", type=Path, help="path to config")
+        self.parser.add_argument('--mode', '-m', default='test', type=str, help="train or test")
+        self.parser.add_argument('--debug', action='store_true', default=False, help="debug or not")
+        self.parser.add_argument('--nofig', action='store_true', default=False, help="don't save_plot")
         return self.parser.parse_args()
 
 class Base_Trainer():
@@ -48,23 +47,28 @@ class Base_Trainer():
         with open(self.parser.runfile, 'r', encoding="utf-8") as f:
             self.args = yaml.load(f.read(), Loader=yaml.FullLoader)
         self.mode = self.args['mode'] if self.parser.mode is None else self.parser.mode
-        self.save_plot = self.parser.save_plot
-        if self.parser.debug:
+        if self.parser.debug is True:
             self.args['num_workers'] = 0
+            warnings.warn('You are using debug mode, only main worker(cpu) is used!!!')
         if 'clip' not in self.args['dst']: 
             self.args['dst']['clip'] = False
+        self.save_plot = False if self.parser.nofig else True
+        self.args['dst']['mode'] = self.mode
+        self.args['dst_train']['param'] = None
         self.dst = self.args['dst']
         self.hyper = self.args['hyper']
         self.arch = self.args['arch']
+        self.arch_isp = self.args['arch_isp'] if 'arch_isp' in self.args else None
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.hostname = socket.gethostname()
         self.model_name = self.args['model_name']
         self.model_dir = self.args['checkpoint']
+        self.fast_ckpt = self.args['fast_ckpt']
         self.sample_dir = os.path.join(self.args['result_dir'] ,f"samples-{self.model_name}")
         os.makedirs(self.sample_dir, exist_ok=True)
         os.makedirs(self.sample_dir+'/temp', exist_ok=True)
         os.makedirs('./logs', exist_ok=True)
-        os.makedirs('./checkpoints', exist_ok=True)
+        os.makedirs(f'./{self.fast_ckpt}', exist_ok=True)
         os.makedirs('./metrics', exist_ok=True)
 
 class LambdaScheduler(LambdaLR):
