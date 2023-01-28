@@ -1,0 +1,73 @@
+mode: 'train'
+checkpoint: '/data/pth/IMX686/saved_model/'
+fast_ckpt: 'checkpoints_IMX686/'
+model_name: 'LRID_PMN_Unet'
+result_dir: 'images/'
+num_gpu: 1
+num_workers: 6
+brightness_correct: False
+
+dst: &base_dst
+  root_dir: '/data/SELD'
+  bias_dir: '/data/SELD/bias'
+  ds_dir: '/data/SELD/resources'
+  dataset: 'IMX686_Mix_Dataset' 
+  dstname: 'indoor_x5'
+  command: 'alldg, darkshading2++, augv2, HB'
+  camera_type: 'IMX686'
+  noise_code: 'p'
+  patch_size: 512
+  H: 3472
+  W: 4624
+  crop_per_image: 12
+  croptype: 'non-overlapped'
+  wp: 1023
+  bl: 64
+  ori: False
+  clip: False
+  gpu_preprocess: True
+  ratio_list: [1,2,4,8,16]
+dst_train:
+  <<: *base_dst
+  mode: 'train'
+  dstname: ['indoor_x5', 'indoor_x3', 'outdoor_x3']
+dst_eval:
+  <<: *base_dst
+  dataset: 'IMX686_Dataset'
+  mode: 'eval'
+  root_dir: '/data/SELD'
+  dstname: 'indoor_x5'
+  ratio_list: [1,2,4,8,16]
+dst_test:
+  <<: *base_dst
+  dataset: 'IMX686_Dataset'
+  mode: 'test'
+  root_dir: '/data/SELD'
+  dstname: 'outdoor_x3'
+  ratio_list: [1,2,4]
+
+arch:
+  name: 'UNetSeeInDark'
+  in_nc: 4
+  out_nc: 4
+  nf: 32
+  nframes: 1
+  use_dpsv: False
+  res: False
+  cascade: False
+  add: False
+  lock_wb: False
+
+hyper:
+  lr_scheduler: 'WarmupCosine'
+  learning_rate: 2.0e-4
+  batch_size: 1
+  last_epoch: 0
+  step_size: 10
+  stop_epoch : 600
+  T: 3
+  coldstart: True
+  num_workers: 4
+  num_gpus: 1
+  save_freq: 10
+  plot_freq: 40

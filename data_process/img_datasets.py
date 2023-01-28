@@ -50,6 +50,7 @@ class ImgBase_Dataset(Dataset):
         self.length = len(self.infos)
         self.get_shape()
         self.darkshading = {}
+        self.naive = False if '++' in self.args['command'] else True
 
     def __len__(self):
         return self.length
@@ -166,11 +167,116 @@ class ImgBase_Dataset(Dataset):
 
         return crops
 
-    def get_darkshading(self, iso):
-        if iso not in self.darkshading:
-            self.darkshading[iso] = np.load(os.path.join(self.args['ds_dir'], f'darkshading-iso-{iso}.npy'))
-        return self.darkshading[iso]
+    # # Naive darkshading
+    # def get_darkshading(self, iso):
+    #     if iso not in self.darkshading:
+    #         self.darkshading[iso] = np.load(os.path.join(self.args['ds_dir'], f'darkshading-iso-{iso}.npy'))
+    #     return self.darkshading[iso]
+    def get_darkshading(self, iso, exp=25, naive=True, num=None, remake=False):
+        branch = '_highISO' if iso>1600 else '_lowISO'
+        if iso not in self.darkshading or remake is True:
+            ds_path = os.path.join(self.args['ds_dir'], f'darkshading-iso-{iso}.npy')
+            ds_k = np.load(os.path.join(self.args['ds_dir'], f'darkshading{branch}_k.npy'))
+            ds_b = np.load(os.path.join(self.args['ds_dir'], f'darkshading{branch}_b.npy'))
+            if naive: # naive linear darkshading - BLE(ISO)
+                with open(os.path.join(self.args['ds_dir'], f'darkshading_BLE.pkl'), 'rb') as f:
+                    self.blc_mean = pkl.load(f)
+                BLE = self.blc_mean[iso]
+            else: # new linear darkshading - BLE(ISO, t)
+                with open(os.path.join(self.args['ds_dir'], f'BLE_t.pkl'),'rb') as f:
+                    self.blc_mean = pickle.load(f)
+                # BLE bias only here
+                # kt = np.poly1d(self.blc_mean[f'kt{branch}'])
+                BLE = self.blc_mean[iso]['b'] # + kt(iso) * exp
+            # D_{ds} = D_{FPNk} + D_{FPNb} + BLE(ISO, t)
+            self.darkshading[iso] = ds_k * iso + ds_b + BLE
 
+        if naive:
+            return self.darkshading[iso]
+        else:
+            kt = np.poly1d(self.blc_mean[f'kt{branch}'])
+            BLE = kt(iso) * exp
+            return self.darkshading[iso] + BLE
+
+# Unprocess Synthetic Dataset(sRGB->Raw)
+class Img_Dataset(ImgBase_Dataset):
+    def __init__(self, args=None):
+        # @ noise_code: g,Guassian->TL; p,Guassian->Possion; r,Row; q,Quantization
+        super().__init__(args)
+        self.args = args if args is not None else self.default_args()
+        self.initialization()
+    
+    def default_args(self):
+        super().default_args()
+        print('数据集没打包呢')
+        raise NotImplementedError
+
+    def initialization(self):
+        super().initialization()
+
+    def get_shape(self):
+        self.H, self.W = self.args['H'], self.args['W']
+        self.C = 3
+        self.h = self.H // 2
+        self.w = self.W // 2
+        self.c = 4
+
+    def __getitem__(self, idx):
+        data = {}
+        # 读取数据
+        data['name'] = self.infos[idx]['name']
+        hr_imgs = np.array(self.f.get(self.infos[idx]['data']))
+        hr_imgs = np.frombuffer(hr_imgs, np.uint16).reshape(self.C,self.H,self.W)
+
+        if self.args["mode"] == 'train':
+            # 随机裁剪成crop_per_image份
+            self.init_random_crop_point(mode=self.args['croptype'], raw_crop=True)
+            hr_crops = self.random_crop(hr_imgs)
+        elif self.args["mode"] == 'eval':
+            hr_crops = hr_imgs[None,:]
+    
+        # RAW需要复杂的unproces
+        lr_shape = hr_crops.shape
+        metadata = [None] * lr_shape[0]
+        wbs = [None] * lr_shape[0]
+        hr_crops = torch.from_numpy(hr_crops)
+        if self.args["lock_wb"]:
+            wb = self.infos[idx]['wb']
+            red_gain, blue_gain = wb[0], wb[2]
+            lock_wb = ([1.], [red_gain], [blue_gain])
+        else:
+            lock_wb = False
+
+        for i in range(lr_shape[0]):
+            hr_crops[i], metadata[i] = unprocess(hr_crops[i], lock_wb=lock_wb, use_gpu=self.args['gpu_preprocess'])
+            wbs[i] = np.array([metadata['red_gain'].numpy(), 1., metadata['blue_gain'].numpy()])
+        hr_crops = mosaic(hr_crops).numpy()
+        # [crops,h,w,c] -> [crops,c,h,w]
+        hr_crops = hr_crops.transpose(0,3,1,2)
+        lr_crops = hr_crops.copy()
+        data['ccm'] = metadata['cam2rgb'].numpy()
+        data['wb'] = np.array(wbs)
+
+        # 人工加噪声
+        data['ratio'] = np.ones(lr_shape[0], dtype=np.float32)
+        if self.args['gpu_preprocess'] is False:
+            for i in range(lr_shape[0]):
+                if self.args['params'] is None:
+                    # 这里可以兼容训练单ISO/dgain的模型
+                    param_iso = self.args['iso']
+                    param_dgain = self.args['dgain']
+                    noise_param = sample_params(camera_type=self.args['camera_type'], ratio=param_dgain, iso=param_iso)
+                else:
+                    noise_param = self.args['params']
+                data['ratio'][i] = noise_param['ratio']
+                lr_crops[i] = generate_noisy_obs(lr_crops[i], param=noise_param, noise_code=self.args['noise_code'], ori=self.args['ori'])
+        
+        data["lr"] = np.ascontiguousarray(lr_crops)
+        data["hr"] = np.ascontiguousarray(hr_crops)
+        
+        return data
+
+# Standard Synthetic Dataset (Raw2Raw)
 class Raw_Dataset(ImgBase_Dataset):
     def __init__(self, args=None):
         super().__init__(args)
@@ -233,6 +339,7 @@ class Raw_Dataset(ImgBase_Dataset):
         
         return data
 
+# SFRN
 class RealBlack_Raw_Dataset(ImgBase_Dataset):
     def __init__(self, args=None):
         super().__init__(args)
@@ -256,10 +363,16 @@ class RealBlack_Raw_Dataset(ImgBase_Dataset):
         self.darkshading = {}
         self.blc_mean = {}
         for iso in self.legalISO:
-            ds_path = os.path.join(self.args['ds_dir'], f'darkshading-iso-{iso}.npy')
-            assert os.path.exists(ds_path), f'Please compute darkshading of ISO-{iso} first!'
-            self.darkshading[iso] = np.load(ds_path)
-            self.blc_mean[iso] = np.mean(self.darkshading[iso])
+            if self.naive:
+                if os.path.exists(os.path.join(self.args['ds_dir'], f'darkshading_BLE.pkl')):
+                    with open(os.path.join(self.args['ds_dir'], f'darkshading_BLE.pkl'), 'rb') as f:
+                        self.blc_mean = pkl.load(f)
+                self.get_darkshading(iso)
+                self.blc_mean[iso] = raw2bayer(self.darkshading[iso], norm=False, clip=False, 
+                                        wp=self.args['wp']-self.args['bl'], bl=0)
+                self.blc_mean[iso] = np.mean(self.blc_mean[iso])
+            else:
+                self.get_darkshading(iso, naive=self.naive)
 
         if 'darkshading' in self.args['command']:
             # darkshaidng会矫正输入，不能算减去的分布
@@ -286,10 +399,12 @@ class RealBlack_Raw_Dataset(ImgBase_Dataset):
             lr_id = np.random.randint(10)
         lr_raw = rawpy.imread(self.blacks[iso_index][lr_id]).raw_image_visible
 
+        data['ExposureTime'] = self.infos[idx]['ExposureTime'] * 1000
+        data['exp'] = data['ExposureTime'] / (100 + random.random()*200)
+
         if 'darkshading' in self.args['command']:
-            lr_raw = lr_raw - self.darkshading[data['ISO']]
-            if 'darkshading2' in self.args['command']:
-                hr_raw = hr_raw - self.darkshading[data['ISO']]
+            lr_raw = lr_raw - self.get_darkshading(iso=data['ISO'], exp=data['exp'], naive=self.naive)
+
         if 'blc2' in self.args['command']:
             hr_raw = hr_raw - self.blc_mean[data['ISO']]
         lr_imgs = raw2bayer(lr_raw, wp=self.args['wp'], bl=self.args['bl'], norm=True, clip=False)
@@ -299,7 +414,7 @@ class RealBlack_Raw_Dataset(ImgBase_Dataset):
             # 随机裁剪成crop_per_image份
             self.init_random_crop_point(mode=self.args['croptype'], raw_crop=False)
             hr_crops = self.random_crop(hr_imgs)
-            black_crops = self.random_crop(lr_imgs)
+            lr_crops = self.random_crop(lr_imgs)
             # Raw wb_aug
             if self.args['lock_wb'] is False and np.random.randint(2):
                 wb = data["wb"]
@@ -310,32 +425,32 @@ class RealBlack_Raw_Dataset(ImgBase_Dataset):
                 hr_crops[:,0] = hr_crops[:,0] * red_gain
                 hr_crops[:,2] = hr_crops[:,2] * blue_gain
 
-            lr_crops = hr_crops.copy()
             lr_shape = lr_crops.shape
-            data['ratio'] = np.ones(lr_shape[0], dtype=np.float32) * 300
-            
-            # 加信号相关的shot noise
-            for i in range(lr_shape[0]):
-                if self.args['params'] is None:
-                    # 按ISO生成噪声参数（其实只要泊松）
-                    noise_param = {'K': 0.0009546 * data['ISO'] * (1 + np.random.uniform(low=-0.01, high=+0.01)) - 0.00193}
-                    noise_param['wp'], noise_param['bl'] = self.args['wp'], self.args['bl']
-                    noise_param['ratio'] = np.random.uniform(low=100, high=300)
-                else:
-                    noise_param = self.args['params']
-                data['ratio'][i] = noise_param['ratio']
-                lr_crops[i] = generate_noisy_obs(lr_crops[i], param=noise_param, 
-                                                noise_code=self.args['noise_code']+'b', ori=self.args['ori'])
+            data['ratio'] = np.random.uniform(low=100, high=300, size=lr_shape[0])
+
             # 贴信号无关的read noise! HB矫正！
             if 'preHB' not in self.args['command'] and 'HB' in self.args['command']:
-                black_crops = self.HBR.map(black_crops, data['ISO'], norm=True)
-            
-            if self.args['ori'] is False:
-                black_crops = black_crops * data['ratio'].reshape(-1, 1, 1, 1)
-            lr_crops = black_crops + lr_crops
+                lr_crops = self.HBR.map(lr_crops, data['ISO'], norm=True)
+
+            # 加信号相关的shot noise
+            if not self.args['gpu_preprocess']:
+                for i in range(lr_shape[0]):
+                    if self.args['params'] is None:
+                        # 按ISO生成噪声参数（其实只要泊松）
+                        noise_param = {'K': 0.0009546 * data['ISO'] * (1 + np.random.uniform(low=-0.01, high=+0.01)) - 0.00193}
+                        noise_param['wp'], noise_param['bl'] = self.args['wp'], self.args['bl']
+                        noise_param['ratio'] = np.random.uniform(low=100, high=300)
+                    else:
+                        noise_param = self.args['params']
+                    data['ratio'][i] = noise_param['ratio']
+                    lr_crops[i] += generate_noisy_obs(hr_crops[i], param=noise_param, 
+                                                    noise_code=self.args['noise_code']+'b', ori=self.args['ori'])
 
         if self.args['clip']:
-            lr_crops = lr_crops.clip(0, 1)
+            # -100 ≈ -inf
+            lb = -100 if 'HB' in self.args['command'] else 0
+            lr_crops = lr_crops.clip(lb, 1)
+            hr_crops = hr_crops.clip(0, 1)
 
         data["lr"] = np.ascontiguousarray(lr_crops)
         data["hr"] = np.ascontiguousarray(hr_crops)

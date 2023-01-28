@@ -5,11 +5,11 @@ The checkpoints and resources are too large, so we put them on the [Baidu Netdis
 
 ## 📋 TODO LIST
 
-[x] Checkout the main branch to TPAMI branch.  
-[x] Cleanup & update the code for the public datasets.  
-[] Cleanup & update the code for our datasets.  
-[] Test the the code for evaluation.  
-[] Test the the code for training.  
+- [x] Checkout the main branch to TPAMI branch.  
+- [x] Cleanup & update the code for the public datasets.  
+- [x] Cleanup & update the code for our datasets.  
+- [ ] Test the the code for evaluation.  
+- [ ] Test the the code for training.  
 
 ## ✨ Highlights
 1. We light the idea of **learnability enhancement** for low-light raw image denoising by reforming paired real data according to the noise modeling from a data perspective.
@@ -34,9 +34,10 @@ The checkpoints and resources are too large, so we put them on the [Baidu Netdis
 * Platforms: Ubuntu 16.04, cuda-10.1
 * Our method can run on the CPU, but we recommend you run it on the GPU
 
-Please download the ELD dataset and SID dataset first, which are necessary for validation (or training).   
+Please download the datasets first, which are necessary for validation (or training).   
 ELD ([official project](https://github.com/Vandermode/ELD)): [download (11.46 GB)](https://drive.google.com/file/d/13Ge6-FY9RMPrvGiPvw7O4KS3LNfUXqEX/view?usp=sharing)  
-SID ([official project](https://github.com/cchen156/Learning-to-See-in-the-Dark)):  [download (25 GB)](https://storage.googleapis.com/isl-datasets/SID/Sony.zip)
+SID ([official project](https://github.com/cchen156/Learning-to-See-in-the-Dark)):  [download (25 GB)](https://storage.googleapis.com/isl-datasets/SID/Sony.zip)  
+LRID ([official project (with password) is released in the paper]):  [download (523 GB)](https://pan.baidu.com/s/1fXlb-Q_ofHOtVOufe5cwDg)
 
 ## 🎬 Quick Start
 1. use `get_dataset_infos.py` to generate dataset infos
@@ -44,28 +45,35 @@ SID ([official project](https://github.com/cchen156/Learning-to-See-in-the-Dark)
 # Evaluate
 python3 get_dataset_infos.py --dstname ELD --root_dir /data/ELD --mode SonyA7S2
 python3 get_dataset_infos.py --dstname SID --root_dir /data/SID/Sony --mode evaltest
+python3 get_dataset_infos.py --dstname LRID --root_dir /data/LRID --mode test
 # Train
 python3 get_dataset_infos.py --dstname SID --root_dir /data/SID/Sony --mode train
+python3 get_dataset_infos.py --dstname LRID --root_dir /data/LRID --mode train
 ```
 2. evaluate
 
 If you don't want to save pictures, please add ```--save_plot False```. This option will save your time and space.
 ```bash 
 # ELD & SID
-python3 trainer_SID.py -f runfiles/Ours.yml --mode evaltest
+python3 trainer_SID.py -f runfiles/SonyA7S2/Ours.yml --mode evaltest
 # ELD only
-python3 trainer_SID.py -f runfiles/Ours.yml --mode eval
+python3 trainer_SID.py -f runfiles/SonyA7S2/Ours.yml --mode eval
 # SID only
-python3 trainer_SID.py -f runfiles/Ours.yml --mode test
+python3 trainer_SID.py -f runfiles/SonyA7S2/Ours.yml --mode test
+# LRID
+python3 trainer_LRID.py -f runfiles/IMX686/Ours.yml --mode test
 ```
 3. train
 ```bash 
-python3 trainer_SID.py -f runfiles/Ours.yml --mode train
+# SID (SonyA7S2)
+python3 trainer_SID.py -f runfiles/SonyA7S2/Ours.yml --mode train
+# LRID (IMX686)
+python3 trainer_LRID.py -f runfiles/IMX686/Ours.yml --mode train
 ```
 
 ## 🔍 Code Guidelines
 #### SNA
-The parameter sampling of SNA is implemented as the `raw_wb_aug_torch` function in the file ```data_process/process.py```.
+The parameter sampling of SNA is implemented as the `SNA_torch` function in the file ```data_process/process.py```.
 The complete process of SNA has the CPU version in the `Mix_Dataset` class in ```data_process/real_datasets.py``` and the GPU version in the `preprocess` function in ```trainer_SID.py```.
 #### DSC
 Both dark shading calibration and noise calibration require massive dark frames. We provide the calibration results directly. The calibration results for dark shading are stored in the `resources` folder.  
@@ -95,7 +103,22 @@ Note:
 
 ### Ablation Study
 ![Ablation_tab](images/github/ablation_tab.jpg)
+<details>
+<summary>Visual Comparision</summary>
+
 ![Ablation_fig](images/github/ablation_fig.jpg)
+</details>
+
+### Extension of DSC on Noise Modeling
+![DSC+NM](images/github/DSC+NM.png)
+<details>
+<summary>Visual Comparision</summary>  
+
+![DSC+NM](images/github/discussion_DSC+NM.png)
+</details>
+
+### Generalizability
+![discussion_sensor](images/github/discussion_sensor.png)
 
 ## 🏷️ Citation
 If you find our code helpful in your research or work please cite our paper.

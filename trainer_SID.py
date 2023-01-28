@@ -217,10 +217,6 @@ class SID_Trainer(Base_Trainer):
         self.eval_psnr_dn.reset()
         self.eval_ssim_lr.reset()
         self.eval_ssim_dn.reset()
-        if epoch > 0:
-            pool = []
-        else:
-            pool = ProcessPoolExecutor(max_workers=max(4, self.args['num_workers']))
         # record every metric
         metrics = {}
         metrics_path = f'./metrics/{self.model_name}_metrics.pkl'
@@ -228,6 +224,10 @@ class SID_Trainer(Base_Trainer):
             with open(metrics_path, 'rb') as f:
                 metrics = pkl.load(f)
         # multiprocess
+        if epoch > 0:
+            pool = []
+        else:
+            pool = ProcessPoolExecutor(max_workers=max(4, self.args['num_workers']))
         task_list = []
         save_plot = self.save_plot
         with tqdm(total=len(self.dataloader_eval)) as t:
@@ -486,9 +486,9 @@ if __name__ == '__main__':
         trainer.eval_psnr.plot_history(savefile=os.path.join(trainer.sample_dir, f'{trainer.model_name}_eval_psnr.jpg'))
         trainer.mode = 'evaltest'
     # best_model
-    best_model_path = os.path.join(f'./checkpoints/{trainer.model_name}_best_model.pth')
+    best_model_path = os.path.join(f'{trainer.fast_ckpt}', f'{trainer.model_name}_best_model.pth')
     if os.path.exists(best_model_path) is False: 
-        best_model_path = os.path.join(f'./checkpoints/{trainer.model_name}_last_model.pth')
+        best_model_path = os.path.join(f'{trainer.fast_ckpt}',f'{trainer.model_name}_last_model.pth')
     best_model = torch.load(best_model_path, map_location=trainer.device)
     trainer.net = load_weights(trainer.net, best_model, multi_gpu=trainer.multi_gpu)
     if 'eval' in trainer.mode:
