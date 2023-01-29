@@ -60,7 +60,7 @@ class IMX686_Trainer(Base_Trainer):
         self.eval_ssim_lr = AverageMeter('SSIM', ':4f')
         self.eval_psnr_dn = AverageMeter('PSNR', ':2f')
         self.eval_ssim_dn = AverageMeter('SSIM', ':4f')
-        self.logfile = f'./logs_IMX686/log_{self.model_name}.log'
+        self.logfile = f'./logs/log_{self.model_name}.log'
         log(f'Model Name:\t{self.model_name}', log=self.logfile, notime=True)
         log(f'Architecture:\t{self.arch["name"]}', log=self.logfile, notime=True)
         log(f'TrainDataset:\t{self.args["dst_train"]["dataset"]}', log=self.logfile, notime=True)
@@ -200,7 +200,7 @@ class IMX686_Trainer(Base_Trainer):
                 self.dst_eval.fast_eval(on=True)
                 # ratio_list = self.dst_eval.args['ratio_list']
                 # for dgain in ratio_list:
-                #     log(f'{self.dstname} Datasets: Dgain={dgain}',log=f'./logs_IMX686/log_{self.model_name}.log')
+                #     log(f'{self.dstname} Datasets: Dgain={dgain}',log=f'./logs/log_{self.model_name}.log')
                 #     trainer.dst_eval.change_eval_ratio(ratio=dgain)
                 self.eval(epoch=epoch)
                 self.dst_eval.fast_eval(on=False)
@@ -217,7 +217,7 @@ class IMX686_Trainer(Base_Trainer):
                     model = torch.load(model_path, map_location=self.device)
                     self.net = load_weights(self.net, model, by_name=True)
                     log(f'Successfully reload best model (Eval PSNR:{self.best_psnr})',
-                        log=f'./logs_IMX686/log_{self.model_name}.log')
+                        log=f'./logs/log_{self.model_name}.log')
 
     def eval(self, epoch=-1):
         self.net.eval()
@@ -337,7 +337,7 @@ class IMX686_Trainer(Base_Trainer):
         log(f"Epoch {epoch}: PSNR={self.eval_psnr.avg:.2f}\n"
             +f"psnrs_lr={self.eval_psnr_lr.avg:.2f}, psnrs_dn={self.eval_psnr_dn.avg:.2f}"
             +f"\nssims_lr={self.eval_ssim_lr.avg:.4f}, ssims_dn={self.eval_ssim_dn.avg:.4f}",
-            log=f'./logs_IMX686/log_{self.model_name}.log')
+            log=f'./logs/log_{self.model_name}.log')
         if epoch < 0:
             with open(metrics_path, 'wb') as f:
                 pkl.dump(metrics, f)
@@ -500,7 +500,7 @@ if __name__ == '__main__':
         trainer.change_eval_dst('eval')
         ratio_list = trainer.dst_eval.args['ratio_list']
         for dgain in ratio_list[:]:
-            log(f'{trainer.dstname} Datasets: Dgain={dgain}',log=f'./logs_IMX686/log_{trainer.model_name}.log')
+            log(f'{trainer.dstname} Datasets: Dgain={dgain}',log=f'./logs/log_{trainer.model_name}.log')
             trainer.dst_eval.change_eval_ratio(ratio=dgain)
             metrics = trainer.eval(-1)
     # outdoor_x5
@@ -508,7 +508,7 @@ if __name__ == '__main__':
         trainer.change_eval_dst('test')
         ratio_list = trainer.dst_eval.args['ratio_list']
         for dgain in ratio_list[:]:
-            log(f'{trainer.dstname} Datasets: Dgain={dgain}',log=f'./logs_IMX686/log_{trainer.model_name}.log')
+            log(f'{trainer.dstname} Datasets: Dgain={dgain}',log=f'./logs/log_{trainer.model_name}.log')
             trainer.dst_eval.change_eval_ratio(ratio=dgain)
             metrics = trainer.eval(-1)
     log(f'Metrics have been saved in ./metrics/{trainer.model_name}_metrics.pkl')

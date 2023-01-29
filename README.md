@@ -1,14 +1,14 @@
 # PMN (TPAMI)
 
 This work is based on our preliminary work "[Learnability Enhancement for Low-light Raw Denoising: Where Paired Real Data Meets Noise Modeling](https://github.com/megvii-research/PMN)" in ACMMM 2022.  
-The checkpoints and resources are too large, so we put them on the [Baidu Netdisk](https://pan.baidu.com/s/1YIY_bmrdK5SLfrHBQjWfRA?pwd=vmcl).
+The checkpoints and resources are too large, so we upload them to the [Baidu Netdisk](https://pan.baidu.com/s/1YIY_bmrdK5SLfrHBQjWfRA?pwd=vmcl).
 
 ## 📋 TODO LIST
 
 - [x] Checkout the main branch to TPAMI branch.  
 - [x] Cleanup & update the code for the public datasets.  
 - [x] Cleanup & update the code for our datasets.  
-- [ ] Test the the code for evaluation.  
+- [x] Test the the code for evaluation.  
 - [ ] Test the the code for training.  
 
 ## ✨ Highlights
@@ -40,15 +40,15 @@ SID ([official project](https://github.com/cchen156/Learning-to-See-in-the-Dark)
 LRID ([official project (with password) is released in the paper]):  [download (523 GB)](https://pan.baidu.com/s/1fXlb-Q_ofHOtVOufe5cwDg)
 
 ## 🎬 Quick Start
-1. use `get_dataset_infos.py` to generate dataset infos
+1. use `get_dataset_infos.py` to generate dataset infos (please modify `--root_dir`)
 ```bash 
 # Evaluate
 python3 get_dataset_infos.py --dstname ELD --root_dir /data/ELD --mode SonyA7S2
 python3 get_dataset_infos.py --dstname SID --root_dir /data/SID/Sony --mode evaltest
-python3 get_dataset_infos.py --dstname LRID --root_dir /data/LRID --mode test
+python3 get_dataset_infos.py --dstname LRID --root_dir /data/LRID
 # Train
 python3 get_dataset_infos.py --dstname SID --root_dir /data/SID/Sony --mode train
-python3 get_dataset_infos.py --dstname LRID --root_dir /data/LRID --mode train
+# python3 get_dataset_infos.py --dstname LRID --root_dir /data/LRID
 ```
 2. evaluate
 
@@ -61,7 +61,7 @@ python3 trainer_SID.py -f runfiles/SonyA7S2/Ours.yml --mode eval
 # SID only
 python3 trainer_SID.py -f runfiles/SonyA7S2/Ours.yml --mode test
 # LRID
-python3 trainer_LRID.py -f runfiles/IMX686/Ours.yml --mode test
+python3 trainer_LRID.py -f runfiles/IMX686/Ours.yml --mode evaltest
 ```
 3. train
 ```bash 

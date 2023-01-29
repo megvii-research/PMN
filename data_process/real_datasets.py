@@ -38,7 +38,7 @@ class RealBase_Dataset(Dataset):
 
     def initialization(self):
         # 获取数据地址
-        self.suffer = 'ARW'
+        self.suffix = 'ARW'
         self.dataset_file = f'SID_{self.args["mode"]}.info'
         with open(f"infos/{self.dataset_file}", 'rb') as info_file:
             self.infos = pkl.load(info_file)
@@ -514,7 +514,7 @@ class ELD_Dataset(RealBase_Dataset):
 
     def initialization(self):
         # 获取数据地址
-        self.suffer = 'ARW'
+        self.suffix = 'ARW'
         self.dataset_file = f'ELD_SonyA7S2.info'
         with open(f"infos/{self.dataset_file}", 'rb') as info_file:
             self.infos = pkl.load(info_file)

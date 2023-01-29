@@ -25,7 +25,7 @@ class PhoneBase_Dataset(Dataset):
     def default_args(self):
         self.args = {}
         self.args['root_dir'] = '/data/LRID/'
-        self.args['suffix'] = 'nori'
+        self.args['suffix'] = 'dng'
         self.args['crop_per_image'] = 12
         self.args['crop_size'] = 512
         self.args['ori'] = True
@@ -47,11 +47,18 @@ class PhoneBase_Dataset(Dataset):
 
     def initialization(self):
         # 获取数据地址
-        self.suffer = 'ARW'
-        self.dataset_file = f'LRID_{self.args["mode"]}.info'
+        self.suffix = 'dng'
+        self.dataset_file = f'{self.args["dstname"]}_{self.args["GT_type"]}.info'
         with open(f"infos/{self.dataset_file}", 'rb') as info_file:
-            self.infos = pkl.load(info_file)
-            print(f'>> Successfully load "{self.dataset_file}" (Length: {len(self.infos)})')
+            self.infos_gt = pkl.load(info_file)
+        with open(f'infos/{self.args["dstname"]}_short.info', 'rb') as info_file:
+            self.infos_short = pkl.load(info_file)
+        self.infos = self.infos_gt
+        for i in range(len(self.infos)):
+            self.infos[i]['hr'] = self.infos[i]['data']
+            self.infos[i]['lr'] = {dgain: self.infos_short[dgain][i] for dgain in self.infos_short}
+            del self.infos[i]['data']
+        print(f'>> Successfully load "{self.dataset_file}" (Length: {len(self.infos)})')
         self.data_split()
         self.change_ratio_list(self.args['ratio_list'])
         self.length = len(self.id_remap)
@@ -393,11 +400,10 @@ class Real_Dataset(PhoneBase_Dataset):
         data['ISO'] = self.infos[idx]['ISO']
         data['ExposureTime'] = self.infos[idx]['ExposureTime']
         
-        if self.args['suffix'] == 'npy':
-            hr_raw = np.array(dataload(self.infos[idx]['long'])).reshape(self.H,self.W)
-            lr_id = np.random.randint(len(self.infos[idx]['short'])) if self.args['mode']=='train' else 0
-            lr_raw = np.array(dataload(self.infos[idx]['short'][lr_id])).reshape(self.H,self.W)
-            data['ratio'] = self.infos[idx]['ratio'][lr_id]
+        hr_raw = np.array(dataload(self.infos[idx]['long'])).reshape(self.H,self.W)
+        lr_id = np.random.randint(len(self.infos[idx]['short'])) if self.args['mode']=='train' else 0
+        lr_raw = np.array(dataload(self.infos[idx]['short'][lr_id])).reshape(self.H,self.W)
+        data['ratio'] = self.infos[idx]['ratio'][lr_id]
 
         if 'darkshading' in self.args['command']:
             lr_raw = lr_raw - self.get_darkshading(data['ISO'])
@@ -460,7 +466,7 @@ class IMX686_Dataset(PhoneBase_Dataset):
         else:
             dgain_id = np.argwhere(np.array(self.ratio_list) == dgain)[0,0]
         # dataload
-        hr_raw = np.array(dataload(self.infos[idx]['hr'])).reshape(self.H,self.W)
+        hr_raw = np.array(dataload(self.infos[idr]['hr'])).reshape(self.H,self.W)
         lr_random_range = len(self.infos[idr]['lr'][dgain]['data']) # 10
         if 'lr' in self.args['command']:
             lr_random_range = min(self.args['max_lr'], lr_random_range) # 10
@@ -564,7 +570,7 @@ class IMX686_Mix_Dataset(PhoneBase_Dataset):
         hot = self.hot_check(int(self.infos[idr]['name'][-3:]))
         black_index = self.blacks_hot if hot else self.blacks
 
-        hr_raw = np.array(dataload(self.infos[idx]['hr'])).reshape(self.H,self.W)
+        hr_raw = np.array(dataload(self.infos[idr]['hr'])).reshape(self.H,self.W)
 
         data['black_lr'] = True if 'HB' in self.args['command'] and not np.random.randint(5) else False
         if data['black_lr']:
@@ -664,7 +670,7 @@ class IMX686_Raw_Dataset(PhoneBase_Dataset):
         data['wb'] = self.infos[idr]['wb']
         data['ccm'] = self.infos[idr]['ccm']
         data['name'] = self.infos[idr]['name']
-        hr_raw = np.array(dataload(self.infos[idx]['hr'])).reshape(self.H,self.W)
+        hr_raw = np.array(dataload(self.infos[idr]['hr'])).reshape(self.H,self.W)
         hr_imgs = raw2bayer(hr_raw, wp=self.args['wp'], bl=self.args['bl'], norm=True, clip=True)
 
         if self.args["mode"] == 'train':
@@ -744,7 +750,7 @@ class IMX686_SFRN_Raw_Dataset(PhoneBase_Dataset):
         hot = self.hot_check(int(self.infos[idr]['name'][-3:]))
         black_index = self.blacks_hot if hot else self.blacks
         
-        hr_raw = np.array(dataload(self.infos[idx]['hr'])).reshape(self.H,self.W)
+        hr_raw = np.array(dataload(self.infos[idr]['hr'])).reshape(self.H,self.W)
         lr_id = np.random.randint(len(black_index[iso_index])) if self.args['mode']=='train' else 0
         if 'lr10' in self.args['command']:
             lr_id = np.random.randint(10)

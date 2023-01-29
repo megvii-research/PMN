@@ -12,7 +12,9 @@ def get_raw_with_info(path):
     name = path.split('/')[-1][:-4]
     info['name'] = name
     info['wb'], info['ccm'] = read_wb_ccm(raw)
-    info['ccm'] = SonyCCM
+    if info['ccm'][0,0] == 1:
+        print('Use SonyCCM')
+        info['ccm'] = SonyCCM
     return gt_img, info
 
 def get_basic_info(path):
@@ -21,7 +23,9 @@ def get_basic_info(path):
     name = path.split('/')[-1][:-4]
     info['name'] = name
     info['wb'], info['ccm'] = read_wb_ccm(raw)
-    info['ccm'] = SonyCCM
+    if info['ccm'][0,0] == 1:
+        print('Use SonyCCM')
+        info['ccm'] = SonyCCM
     return info
 
 def get_SID_info(info_dir='info', root_dir='/data/SID/Sony', mode='train'):
@@ -97,7 +101,6 @@ def get_SID_info_from_txt(info_dir='infos', root_dir='/data/SID/Sony', txt='SID_
     return infos
 
 def get_ELD_info(info_dir='infos', root_dir='/data/ELD'):
-    # oss path
     root_dir = os.path.join(root_dir, 'SonyA7S2')
     pbar = tqdm([f'scene-{i+1}' for i in range(10)])
     infos = []
@@ -120,13 +123,79 @@ def get_ELD_info(info_dir='infos', root_dir='/data/ELD'):
         pkl.dump(infos, out_file)
     return infos
 
+def get_IMX686_info_short(
+        info_dir='infos', 
+        root_dir='/data/LRID', 
+        subset='indoor_x5'):
+    root_dir = os.path.join(root_dir, subset, '6400')
+    infos = {}
+    for dgain in os.listdir(root_dir):
+        sub_dir = os.path.join(root_dir, dgain)
+        log(f'Dgain={dgain}, Path={sub_dir}', log='worklog/IMX686_short.log')
+        scenes = sorted([scene for scene in os.listdir(sub_dir)])
+        pbar = tqdm(range(len(scenes)))
+        dgain = int(dgain)
+        infos[dgain] = []
+        # 第二级，文件
+        for i in pbar:
+            info_scene = {'scene':scenes[i], 'dgain':dgain, 'ISO':6400, 'data':[], 'metadata':[]}
+            paths = [path for path in sorted(glob.glob(os.path.join(sub_dir, scenes[i], '*.dng')))]
+            for k in range(len(paths)):
+                try:
+                    info = get_basic_info(paths[k])
+                    info_scene['data'].append(paths[k])
+                    dng_items = info['name'].split('_')
+                    time = '-'.join(dng_items[3:10])
+                    info['time'] = time
+                    info_scene['metadata'].append(info)
+                except Exception as e:
+                    log(f'Error: {str(e)}', log='worklog/IMX686_short.log')
+                    log(f'Some Error happend, we skip the data at "{paths[k]}"...', log='worklog/IMX686_short.log')
+
+            infos[dgain].append(info_scene)
+            pbar.set_description_str(f'Dgain-{dgain:02d}, Scene-{scenes[i]}')
+
+    info_path = os.path.join(info_dir, f'{subset}_short.info')
+    with open(info_path, 'wb') as out_file:
+        pkl.dump(infos, out_file)
+    return infos
+
+    nw_short.close()
+
+def get_IMX686_info_long(
+        info_dir='infos', 
+        root_dir='/data/LRID', 
+        subset='indoor_x5',
+        GTtype='GT_align_ours'):
+    sub_dir = os.path.join(root_dir, subset, 'npy', GTtype)
+    log(f'Path={sub_dir}', log='worklog/IMX686_long.log')
+    infos = []
+    # metadata
+    with open(os.path.join(root_dir, subset, f'metadata_{subset}_gt.pkl'), 'rb') as f:
+        metadatas = pickle.load(f)
+    # 第二级，文件
+    scenes = sorted([scene[:-4] for scene in sorted(os.listdir(sub_dir))])
+    pbar = tqdm(range(len(scenes)))
+    for i in pbar:
+        path_long = os.path.join(sub_dir, f'{scenes[i]}.npy')
+        filename = f'{subset}_gt_{scenes[i]}'
+        info = {'name':filename, 'data':path_long, 'ccm':metadatas[i]['ccm'], 'wb':metadatas[i]['wb']}
+
+        infos.append(info)
+        pbar.set_description_str(f'Scene-{scenes[i]}')
+
+    info_path = os.path.join(info_dir, f"{subset}_{GTtype}.info")
+    with open(info_path, 'wb') as out_file:
+        pkl.dump(infos, out_file)
+    return infos
+
 class DatasetInfoParser():
     def __init__(self):
         self.parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     def parse(self):
-        self.parser.add_argument('--dstname', '-d', default='SID', type=str)
-        self.parser.add_argument('--root_dir', '-r', default="/data/SID/Sony", type=str)
+        self.parser.add_argument('--dstname', '-d', default='LRID', type=str)
+        self.parser.add_argument('--root_dir', '-r', default="/data/LRID", type=str)
         self.parser.add_argument('--info_dir', '-i', default="./infos", type=str)
         self.parser.add_argument('--mode', '-m', default='train', type=str)
 
@@ -136,6 +205,7 @@ if __name__ == "__main__":
     parser = DatasetInfoParser()
     args = parser.parse()
     os.makedirs(args.info_dir, exist_ok=True)
+    os.makedirs('worklog', exist_ok=True)
     if args.dstname == 'ELD':
         infos = get_ELD_info(info_dir=args.info_dir, root_dir=args.root_dir)
     elif args.dstname == 'SID':
@@ -143,6 +213,12 @@ if __name__ == "__main__":
             infos = get_SID_info_from_txt(info_dir=args.info_dir, root_dir=args.root_dir)
         else:
             infos = get_SID_info(info_dir=args.info_dir, root_dir=args.root_dir, mode=args.mode)
+    elif args.dstname == 'LRID':
+        for dir in ['indoor_x5','indoor_x3','outdoor_x5','outdoor_x3']:
+            for GTtype in ['GT_align_ours']:#,'GT_align_median','GT_align_mean','GT_ours','GT_median','GT_mean']:
+                infos = get_IMX686_info_long(info_dir=args.info_dir, root_dir=args.root_dir, subset=dir, GTtype=GTtype)
+        for dir in ['indoor_x5','indoor_x3','outdoor_x5','outdoor_x3']:
+            infos = get_IMX686_info_short(info_dir=args.info_dir, root_dir=args.root_dir, subset=dir)
     print('Info Example:', infos[0])
     print()
     

@@ -1,18 +1,21 @@
+import os
+os.environ["OMP_NUM_THREADS"] = "1" 
+os.environ["MKL_NUM_THREADS"] = "1" 
+import cv2
+cv2.setNumThreads(0)
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 from torch.nn.parallel import DistributedDataParallel
 from torch.optim.lr_scheduler import *
-import os
 import glob
 import matplotlib
-matplotlib.use('AGG')
+# matplotlib.use('AGG')
 import matplotlib.pyplot as plt
 import numpy as np
 import gc
 from PIL import Image
-import cv2
 import time
 import socket
 import scipy
@@ -27,11 +30,16 @@ from tqdm import tqdm
 import exifread
 import rawpy
 import math
+import random
 import yaml
 import pickle
 import warnings
 import h5py
 import pickle as pkl
+import warnings
+# np.random.seed(7)
+# torch.manual_seed(7)
+# torch.cuda.manual_seed(7)
 
 fn_time = {}
 
@@ -338,28 +346,28 @@ def repair_bad_pixels(raw, bad_points, method='median'):
         raw[p[0],p[1]] = fixed_raw[p[0],p[1]]
     return raw
 
-def img4c_to_RGB(img4c, metadata=None, gamma=2.2):
-    h,w,c = img4c.shape
+def img4c_to_RGB(img4c, wb=None, ccm=None, gamma=2.2):
+    c,h,w = img4c.shape
     H = h * 2
     W = w * 2
     raw = np.zeros((H,W), np.float32)
-    red_gain = metadata['red_gain'] if metadata is not None else 1
-    blue_gain = metadata['blue_gain'] if metadata is not None else 1
-    rgb_gain = metadata['rgb_gain'] if metadata is not None else 1
-    raw[0:H:2,0:W:2] = img4c[:,:,0] * red_gain # R
-    raw[0:H:2,1:W:2] = img4c[:,:,1] # G1
-    raw[1:H:2,1:W:2] = img4c[:,:,2] * blue_gain # B
-    raw[1:H:2,0:W:2] = img4c[:,:,3] # G2
-    raw = np.clip(raw * rgb_gain, 0, 1)
+    red_gain = wb[0] if wb is not None else 2
+    blue_gain = wb[2] if wb is not None else 2
+    raw[0:H:2,0:W:2] = img4c[0] * red_gain # R
+    raw[0:H:2,1:W:2] = img4c[1] # G1
+    raw[1:H:2,1:W:2] = img4c[2] * blue_gain # B
+    raw[1:H:2,0:W:2] = img4c[3] # G2
+    raw = np.clip(raw, 0, 1)
     white_point = 16383
     raw = raw * white_point
     img = cv2.cvtColor(raw.astype(np.uint16), cv2.COLOR_BAYER_BG2RGB_EA) / white_point
-    ccms = np.array([[ 1.7479, -0.7025, -0.0455],
-        [-0.2163,  1.5111, -0.2948],
-        [ 0.0054, -0.6514,  1.6460]])
+    if ccm is None:
+        ccm = np.array( [[ 1.9712269,-0.6789218, -0.29230508],
+                        [-0.29104823, 1.748401 , -0.45735288],
+                        [ 0.02051281,-0.5380369,  1.5175241 ]])
     img = img[:, :, None, :]
-    ccms = ccms[None, None, :, :]
-    img = np.sum(img * ccms, axis=-1)
+    ccm = ccm[None, None, :, :]
+    img = np.sum(img * ccm, axis=-1)
     img = np.clip(img, 0, 1) ** (1/gamma)
     return img
 
@@ -418,8 +426,8 @@ def plot_sample(img_lr, img_dn, img_hr, filename='result', model_name='Unet',
         ssim = []
         psnr.append(compare_psnr(img_hr, img_lr))
         psnr.append(compare_psnr(img_hr, img_dn))
-        ssim.append(compare_ssim(img_hr, img_lr, multichannel=True))
-        ssim.append(compare_ssim(img_hr, img_dn, multichannel=True))
+        ssim.append(compare_ssim(img_hr, img_lr, channel_axis=-1))
+        ssim.append(compare_ssim(img_hr, img_dn, channel_axis=-1))
         psnr.append(-1)
         ssim.append(-1)
     else:
@@ -452,7 +460,7 @@ def plot_sample(img_lr, img_dn, img_hr, filename='result', model_name='Unet',
         cv2.imwrite(denoisedfile, img_dn[:,:,::-1])
         fig.savefig(savefile, bbox_inches='tight')
         plt.close()
-    return psnr, ssim
+    return psnr, ssim, filename
 
 def save_picture(img_sr, save_path='./images/test',frame_id='0000'):
     # 变回uint8
@@ -509,7 +517,7 @@ def quality_assess(X, Y, data_range=255):
     # Y: correct; X: estimate
     if X.ndim == 3:
         psnr = compare_psnr(Y, X, data_range=data_range)
-        ssim = compare_ssim(Y, X, data_range=data_range, multichannel=True)
+        ssim = compare_ssim(Y, X, data_range=data_range, channel_axis=-1)
         return {'PSNR':psnr, 'SSIM': ssim}
     else:
         raise NotImplementedError
@@ -524,6 +532,11 @@ def rows2bayer(rows):
     bayer[0:H*2:2] = rows[0]
     bayer[1:H*2:2] = rows[1]
     return bayer
+
+def mpop(func, idx, *args, **kwargs):
+    data = func(*args, **kwargs)
+    log(f'Finish task No.{idx}...')
+    return idx, func(*args, **kwargs)
 
 def dataload(path):
     suffix = path[-4:].lower()

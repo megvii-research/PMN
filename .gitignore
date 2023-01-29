@@ -4,4 +4,4 @@ __pycache__/*
 *.pth
 *.npy
 saved_model/*
-logs/*
+# logs/*

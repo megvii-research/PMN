@@ -1,0 +1,9 @@
+H: 3472
+W: 4624
+wp: 1023
+bl: 64
+bpc: True
+merge_type: ours
+root_dir: '/data/LRID'
+src_dir: '/data/LRID/bias'
+dst_dir: '/data/LRID/resources/IMX686'

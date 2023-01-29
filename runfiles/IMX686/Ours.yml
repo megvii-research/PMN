@@ -8,9 +8,9 @@ num_workers: 6
 brightness_correct: False
 
 dst: &base_dst
-  root_dir: '/data/SELD'
-  bias_dir: '/data/SELD/bias'
-  ds_dir: '/data/SELD/resources'
+  root_dir: '/data/LRID'
+  bias_dir: '/data/LRID/bias'
+  ds_dir: 'resources/IMX686'
   dataset: 'IMX686_Mix_Dataset' 
   dstname: 'indoor_x5'
   command: 'alldg, darkshading2++, augv2, HB'
@@ -35,14 +35,14 @@ dst_eval:
   <<: *base_dst
   dataset: 'IMX686_Dataset'
   mode: 'eval'
-  root_dir: '/data/SELD'
+  root_dir: '/data/LRID'
   dstname: 'indoor_x5'
   ratio_list: [1,2,4,8,16]
 dst_test:
   <<: *base_dst
   dataset: 'IMX686_Dataset'
   mode: 'test'
-  root_dir: '/data/SELD'
+  root_dir: '/data/LRID'
   dstname: 'outdoor_x3'
   ratio_list: [1,2,4]
 

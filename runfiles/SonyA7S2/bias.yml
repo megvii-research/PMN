@@ -1,0 +1,9 @@
+H: 3472
+W: 4624
+wp: 1023
+bl: 64
+bpc: True
+merge_type: ours
+root_dir: '/data/SonyA7S2'
+src_dir: '/data/SonyA7S2/bias'
+dst_dir: '/data/SonyA7S2/resources/SonyA7S2'

@@ -1,6 +1,3 @@
-import random
-import argparse
-
 from utils import *
 from archs import *
 from losses import *
@@ -11,8 +8,8 @@ class BaseParser():
         self.parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     def parse(self):
-        self.parser.add_argument('--runfile', '-f', default="runfiles/SonyA7S2/input.yml", type=Path, help="path to config")
-        self.parser.add_argument('--mode', '-m', default='test', type=str, help="train or test")
+        self.parser.add_argument('--runfile', '-f', default="runfiles/SonyA7S2/Ours.yml", type=Path, help="path to config")
+        self.parser.add_argument('--mode', '-m', default='evaltest', type=str, help="train or test")
         self.parser.add_argument('--debug', action='store_true', default=False, help="debug or not")
         self.parser.add_argument('--nofig', action='store_true', default=False, help="don't save_plot")
         return self.parser.parse_args()
