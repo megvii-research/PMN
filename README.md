@@ -1,7 +1,7 @@
 # PMN (TPAMI)
 
-This work is based on our preliminary work "[Learnability Enhancement for Low-light Raw Denoising: Where Paired Real Data Meets Noise Modeling](https://github.com/megvii-research/PMN)" in ACMMM 2022.  
-The checkpoints and resources are too large, so we upload them to the [Baidu Netdisk](https://pan.baidu.com/s/1YIY_bmrdK5SLfrHBQjWfRA?pwd=vmcl).
+The code of this branch is the TPAMI version (under review) of PMN.  
+The checkpoints and resources are too large, so we upload them to the [Baidu Netdisk](https://pan.baidu.com/s/1YIY_bmrdK5SLfrHBQjWfRA?pwd=vmcl). Please download them in this project before validation or training. If you save it in another path, please modify the path location recorded in the yaml files (`runfiles/$camera_type$/$method$.yml`).
 
 ## 📋 TODO LIST
 
@@ -37,7 +37,7 @@ The checkpoints and resources are too large, so we upload them to the [Baidu Net
 Please download the datasets first, which are necessary for validation (or training).   
 ELD ([official project](https://github.com/Vandermode/ELD)): [download (11.46 GB)](https://drive.google.com/file/d/13Ge6-FY9RMPrvGiPvw7O4KS3LNfUXqEX/view?usp=sharing)  
 SID ([official project](https://github.com/cchen156/Learning-to-See-in-the-Dark)):  [download (25 GB)](https://storage.googleapis.com/isl-datasets/SID/Sony.zip)  
-LRID ([official project (with password) is released in the paper]):  [download (523 GB)](https://pan.baidu.com/s/1fXlb-Q_ofHOtVOufe5cwDg)
+LRID ([official project with password has been released in the paper]):  [download (523 GB)](https://pan.baidu.com/s/1fXlb-Q_ofHOtVOufe5cwDg)
 
 ## 🎬 Quick Start
 1. use `get_dataset_infos.py` to generate dataset infos (please modify `--root_dir`)
@@ -119,26 +119,6 @@ Note:
 
 ### Generalizability
 ![discussion_sensor](images/github/discussion_sensor.png)
-
-## 🏷️ Citation
-If you find our code helpful in your research or work please cite our paper.
-```bibtex
-@inproceedings{feng2022learnability,
-    author = {Feng, Hansen and Wang, Lizhi and Wang, Yuzhi and Huang, Hua},
-    title = {Learnability Enhancement for Low-Light Raw Denoising: Where Paired Real Data Meets Noise Modeling},
-    booktitle = {Proceedings of the 30th ACM International Conference on Multimedia},
-    year = {2022},
-    pages = {1436–1444},
-    numpages = {9},
-    location = {Lisboa, Portugal},
-    series = {MM '22}
-}
-```
-
-## 🤝 Acknowledgments
-* [SID (CVPR 2018)](https://github.com/cchen156/Learning-to-See-in-the-Dark)
-* [ELD (CVPR 2020 / TPAMI 2021)](https://github.com/Vandermode/ELD)
-* [SFRN (ICCV 2021)](https://github.com/zhangyi-3/noise-synthesis)
 
 ## 📧 Contact
 If you would like to get in-depth help from me, please feel free to contact me (fenghansen@bit.edu.cn / hansen97@outlook.com) with a brief self-introduction (including your name, affiliation, and position).
