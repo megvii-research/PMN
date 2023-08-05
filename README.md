@@ -37,7 +37,7 @@ The checkpoints and resources are too large, so we upload them to the [Baidu Net
 Please download the datasets first, which are necessary for validation (or training).   
 ELD ([official project](https://github.com/Vandermode/ELD)): [download (11.46 GB)](https://drive.google.com/file/d/13Ge6-FY9RMPrvGiPvw7O4KS3LNfUXqEX/view?usp=sharing)  
 SID ([official project](https://github.com/cchen156/Learning-to-See-in-the-Dark)):  [download (25 GB)](https://storage.googleapis.com/isl-datasets/SID/Sony.zip)  
-LRID ([official project with password has been released in the paper]):  [download (523 GB)](https://pan.baidu.com/s/1fXlb-Q_ofHOtVOufe5cwDg)
+LRID ([official project](https://fenghansen.github.io/publication/PMN/)):  [download (523 GB)](https://pan.baidu.com/s/1fXlb-Q_ofHOtVOufe5cwDg)
 
 ## 🎬 Quick Start
 1. use `get_dataset_infos.py` to generate dataset infos (please modify `--root_dir`)
@@ -119,6 +119,32 @@ Note:
 
 ### Generalizability
 ![discussion_sensor](images/github/discussion_sensor.png)
+
+## 🏷️ Citation
+If you find our code helpful in your research or work please cite our paper.
+```bibtex
+@inproceedings{feng2022learnability,
+    author = {Feng, Hansen and Wang, Lizhi and Wang, Yuzhi and Huang, Hua},
+    title = {Learnability Enhancement for Low-Light Raw Denoising: Where Paired Real Data Meets Noise Modeling},
+    booktitle = {Proceedings of the 30th ACM International Conference on Multimedia},
+    year = {2022},
+    pages = {1436–1444},
+    numpages = {9},
+    location = {Lisboa, Portugal},
+    series = {MM '22}
+}
+
+@ARTICLE{feng2023learnability,
+  author={Feng, Hansen and Wang, Lizhi and Wang, Yuzhi and Fan, Haoqiang and Huang, Hua},
+  journal={IEEE Transactions on Pattern Analysis and Machine Intelligence}, 
+  title={Learnability Enhancement for Low-Light Raw Image Denoising: A Data Perspective}, 
+  year={2023},
+  volume={},
+  number={},
+  pages={1-18},
+  doi={10.1109/TPAMI.2023.3301502}
+}
+```
 
 ## 📧 Contact
 If you would like to get in-depth help from me, please feel free to contact me (fenghansen@bit.edu.cn / hansen97@outlook.com) with a brief self-introduction (including your name, affiliation, and position).
