@@ -1,7 +1,7 @@
 mode: 'train'
 checkpoint: '/data/pth/IMX686/saved_model/'
-fast_ckpt: 'checkpoints_IMX686/'
-model_name: 'LRID_PMN_Unet'
+fast_ckpt: 'checkpoints/IMX686'
+model_name: 'IMX686_PMN_Unet'
 result_dir: 'images/'
 num_gpu: 1
 num_workers: 6

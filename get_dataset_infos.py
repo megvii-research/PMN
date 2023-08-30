@@ -13,7 +13,8 @@ def get_raw_with_info(path):
     info['name'] = name
     info['wb'], info['ccm'] = read_wb_ccm(raw)
     if info['ccm'][0,0] == 1:
-        print('Use SonyCCM')
+        warnings.warn('Use SonyCCM')
+        # print('Use SonyCCM')
         info['ccm'] = SonyCCM
     return gt_img, info
 
@@ -24,7 +25,7 @@ def get_basic_info(path):
     info['name'] = name
     info['wb'], info['ccm'] = read_wb_ccm(raw)
     if info['ccm'][0,0] == 1:
-        print('Use SonyCCM')
+        warnings.warn('Use SonyCCM')
         info['ccm'] = SonyCCM
     return info
 
@@ -53,7 +54,7 @@ def get_SID_info(info_dir='info', root_dir='/data/SID/Sony', mode='train'):
     for i in pbar:
         path = os.path.join(root_dir, names[i])
         info = get_basic_info(path)
-        info['ratio'] = np.zeros(len(paths_short[i]), dtype=np.int)
+        info['ratio'] = np.zeros(len(paths_short[i]), dtype='int')
         for k in range(len(paths_short[i])):
             info_short = get_basic_info(paths_short[i][k])
             info['ratio'][k] = int(info['ExposureTime']/info_short['ExposureTime'])
@@ -194,8 +195,8 @@ class DatasetInfoParser():
         self.parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     def parse(self):
-        self.parser.add_argument('--dstname', '-d', default='LRID', type=str)
-        self.parser.add_argument('--root_dir', '-r', default="/data/LRID", type=str)
+        self.parser.add_argument('--dstname', '-d', default='ELD', type=str)
+        self.parser.add_argument('--root_dir', '-r', default="E:/datasets/ELD", type=str)
         self.parser.add_argument('--info_dir', '-i', default="./infos", type=str)
         self.parser.add_argument('--mode', '-m', default='train', type=str)
 
@@ -214,10 +215,10 @@ if __name__ == "__main__":
         else:
             infos = get_SID_info(info_dir=args.info_dir, root_dir=args.root_dir, mode=args.mode)
     elif args.dstname == 'LRID':
-        for dir in ['indoor_x5','indoor_x3','outdoor_x5','outdoor_x3']:
+        for dir in ['indoor_x5','indoor_x3','outdoor_x3']:#, 'outdoor_x5']:
             for GTtype in ['GT_align_ours']:#,'GT_align_median','GT_align_mean','GT_ours','GT_median','GT_mean']:
                 infos = get_IMX686_info_long(info_dir=args.info_dir, root_dir=args.root_dir, subset=dir, GTtype=GTtype)
-        for dir in ['indoor_x5','indoor_x3','outdoor_x5','outdoor_x3']:
+        for dir in ['indoor_x5','indoor_x3','outdoor_x3']:#, 'outdoor_x5']:
             infos = get_IMX686_info_short(info_dir=args.info_dir, root_dir=args.root_dir, subset=dir)
     print('Info Example:', infos[0])
     print()

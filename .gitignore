@@ -1,7 +1,10 @@
 __pycache__/*
-# images/*
+images/*
 *.pyc
 *.pth
 *.npy
 saved_model/*
-# logs/*
+logs/*
+metrics/*
+*.log
+*.info

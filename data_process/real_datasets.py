@@ -54,17 +54,17 @@ class RealBase_Dataset(Dataset):
             # read darkshaidng
             if 'darkshading' in self.args['command']:
                 self.get_darkshading(iso, naive=self.naive)
-                if 'darkshading2' in self.args['command'] and iso not in self.noiseparam:
-                    nlf_path = os.path.join(self.args['ds_dir'], f'noiseparam-iso-{iso}.h5')
-                    f = h5py.File(nlf_path, 'r')
-                    self.noiseparam[iso] = {
-                        'Kmax':0.0009563*iso, 'lam':np.mean(f['lam']), 
-                        'sigGs':np.mean(f['sigmaGs']), 'sigGssig':np.std(f['sigmaGs']),
-                        'sigTL':np.mean(f['sigmaTL']), 'sigTLsig':np.std(f['sigmaTL']),
-                        'sigR':np.mean(f['sigmaR']), 'sigRsig':np.std(f['sigmaR']),
-                        'bias':0, 'biassig':np.std(f['meanRead']),
-                        'q':1/(2**14), 'wp':16383, 'bl':512
-                        }
+                # if 'darkshading2' in self.args['command'] and iso not in self.noiseparam:
+                #     nlf_path = os.path.join(self.args['ds_dir'], f'noiseparam-iso-{iso}.h5')
+                #     f = h5py.File(nlf_path, 'r')
+                #     self.noiseparam[iso] = {
+                #         'Kmax':0.0009563*iso, 'lam':np.mean(f['lam']), 
+                #         'sigGs':np.mean(f['sigmaGs']), 'sigGssig':np.std(f['sigmaGs']),
+                #         'sigTL':np.mean(f['sigmaTL']), 'sigTLsig':np.std(f['sigmaTL']),
+                #         'sigR':np.mean(f['sigmaR']), 'sigRsig':np.std(f['sigmaR']),
+                #         'bias':0, 'biassig':np.std(f['meanRead']),
+                #         'q':1/(2**14), 'wp':16383, 'bl':512
+                #         }
 
     def lr_idremap_table_init(self):
         self.lr_idremap_table = [None] * self.length

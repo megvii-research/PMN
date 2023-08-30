@@ -1,7 +1,7 @@
 mode: 'train'
 checkpoint: 'saved_model/'
 fast_ckpt: 'checkpoints/SonyA7S2'
-model_name: 'SonyA7S2_Mix_Unet'
+model_name: 'SonyA7S2_PNNP_Unet'
 result_dir: 'images/'
 num_gpu: 1
 num_workers: 4
@@ -9,13 +9,13 @@ brightness_correct: True
 
 dst: &base_dst
   root_dir: '/data/SID'
-  bias_dir: '/data/SonyA7S2/bias'
+  bias_dir: '/data/SonyA7S2/bias-3355'
   ds_dir: 'resources/SonyA7S2_old'
-  dataset: 'SID_Dataset' 
+  dataset: 'Raw_Dataset' # Proxy_Dataset #(for train)
   dstname: 'SID'
-  command: 'augv2, idremap, darkshading2'
+  command: 'rawdn3, idremap, darkshading2, preHB'
   camera_type: 'SonyA7S2'
-  noise_code: 'pgrq'
+  noise_code: 'pr'
   patch_size: 512
   H: 2848
   W: 4256
@@ -24,16 +24,15 @@ dst: &base_dst
   wp: 16383
   bl: 512
   ori: False
-  clip: False
+  lock_wb : True
+  clip: True
   gpu_preprocess: True
 dst_train:
   <<: *base_dst
   mode: 'train'
-  dataset: 'Mix_Dataset' 
   dstname: 'SID'
 dst_eval:
   <<: *base_dst
-  root_dir: '/data/ELD'
   mode: 'eval'
   dataset: 'ELD_Dataset' 
   dstname: 'ELD'
@@ -44,6 +43,20 @@ dst_test:
   mode: 'evaltest'
   dataset: 'SID_Dataset' 
   dstname: 'SID'
+
+proxy:
+  model_dir: 'noise_models'
+  name: 'pw_nf16_2stage'
+  K_k : 0.0009546
+  K_b': -0.00193
+  in_nc: 1
+  out_nc: 1
+  nf: 16
+  nb: 2
+  nframes: 1
+  d: 1024
+  mode: '2stage'
+  act: 'swish'
 
 arch:
   name: 'UNetSeeInDark'
@@ -59,14 +72,15 @@ arch:
 
 hyper:
   lr_scheduler: 'WarmupCosine'
-  learning_rate: 1.e-4
+  learning_rate: 1.0e-4
   batch_size: 1
-  last_epoch: 600
+  last_epoch: 1200
   step_size: 10
-  stop_epoch : 1800
+  stop_epoch : 2000
   T: 2
+  coldstart: False
   num_workers: 4
   num_gpus: 1
   save_freq: 10
-  plot_freq: 100
-  best_psnr: 0.
+  plot_freq: 50
+  best_psnr: 40
