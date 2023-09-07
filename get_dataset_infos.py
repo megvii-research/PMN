@@ -1,5 +1,6 @@
 from utils import *
 from data_process.process import *
+import platform
 
 SonyCCM = np.array( [[ 1.9712269,-0.6789218, -0.29230508],
                     [-0.29104823, 1.748401 , -0.45735288],
@@ -9,7 +10,7 @@ def get_raw_with_info(path):
     raw = rawpy.imread(path)
     info = get_ISO_ExposureTime(path)
     gt_img = raw.raw_image_visible
-    name = path.split('/')[-1][:-4]
+    name = path.split('\\')[-1][:-4] if platform.system() == 'Windows' else path.split('/')[-1][:-4]
     info['name'] = name
     info['wb'], info['ccm'] = read_wb_ccm(raw)
     if info['ccm'][0,0] == 1:
@@ -21,7 +22,7 @@ def get_raw_with_info(path):
 def get_basic_info(path):
     raw = rawpy.imread(path)
     info = get_ISO_ExposureTime(path)
-    name = path.split('/')[-1][:-4]
+    name = path.split('\\')[-1][:-4] if platform.system() == 'Windows' else path.split('/')[-1][:-4]
     info['name'] = name
     info['wb'], info['ccm'] = read_wb_ccm(raw)
     if info['ccm'][0,0] == 1:
@@ -195,10 +196,10 @@ class DatasetInfoParser():
         self.parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     def parse(self):
-        self.parser.add_argument('--dstname', '-d', default='ELD', type=str)
-        self.parser.add_argument('--root_dir', '-r', default="E:/datasets/ELD", type=str)
+        self.parser.add_argument('--dstname', '-d', default='SID', type=str)
+        self.parser.add_argument('--root_dir', '-r', default="E:/datasets/SID/Sony", type=str)
         self.parser.add_argument('--info_dir', '-i', default="./infos", type=str)
-        self.parser.add_argument('--mode', '-m', default='train', type=str)
+        self.parser.add_argument('--mode', '-m', default='test', type=str)
 
         return self.parser.parse_args()
 

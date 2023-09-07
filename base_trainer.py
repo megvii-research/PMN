@@ -14,6 +14,14 @@ class BaseParser():
         self.parser.add_argument('--nofig', action='store_true', default=False, help="don't save_plot")
         return self.parser.parse_args()
 
+# 不这么搞随机pytorch和numpy的联动会出bug，随机种子有问题
+def worker_init_fn(worker_id):
+    torch_seed = torch.initial_seed()
+    random.seed(torch_seed + worker_id)
+    if torch_seed >= 2**30:  # make sure torch_seed + workder_id < 2**32
+        torch_seed = torch_seed % 2**30
+    np.random.seed(torch_seed + worker_id)
+
 class Base_Trainer():
     def __init__(self):
         self.initialization()
@@ -29,14 +37,6 @@ class Base_Trainer():
                                         milestone=[step_size, step_size*9//5], gamma=[0.5, 0.1], 
                                         lr=self.hyper['learning_rate'])
         return self.lr_lambda
-
-    # 不这么搞随机pytorch和numpy的联动会出bug，随机种子有问题
-    def worker_init_fn(self, worker_id):
-        torch_seed = torch.initial_seed()
-        random.seed(torch_seed + worker_id)
-        if torch_seed >= 2**30:  # make sure torch_seed + workder_id < 2**32
-            torch_seed = torch_seed % 2**30
-        np.random.seed(torch_seed + worker_id)
 
     def initialization(self):
         parser = BaseParser()

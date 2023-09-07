@@ -40,7 +40,7 @@ class SID_Trainer(Base_Trainer):
         self.infos = None
         if self.mode=='train':
             self.dst_train = globals()[self.args['dst_train']['dataset']](self.args['dst_train'])
-            self.dataloader_train = DataLoader(self.dst_train, batch_size=self.hyper['batch_size'], worker_init_fn=self.worker_init_fn,
+            self.dataloader_train = DataLoader(self.dst_train, batch_size=self.hyper['batch_size'], worker_init_fn=worker_init_fn,
                                     shuffle=True, num_workers=self.args['num_workers'], pin_memory=False)
             self.change_eval_dst('eval')
             self.dataloader_eval = DataLoader(self.dst_eval, batch_size=1, shuffle=False, 
@@ -269,14 +269,15 @@ class SID_Trainer(Base_Trainer):
                         imgs_dn = imgs_dn * ratio
                     imgs_lr = torch.clamp(imgs_lr, 0, 1)
                     imgs_dn = torch.clamp(imgs_dn, 0, 1)
+
+                    # np.save(f'{name}_input.npy', imgs_lr.detach().cpu().numpy())
+                    # np.save(f'{name}_denoised.npy', imgs_dn.detach().cpu().numpy())
+                    # np.save(f'{name}_gt.npy', imgs_hr.detach().cpu().numpy())
                     
                     # align to ELD's configuration (.=_=.)
                     if self.args['brightness_correct'] and epoch < 0:
-                        # ds_raw = self.dst_eval.get_darkshading(ISO)
-                        # ds = raw2bayer(ds_raw, wp=16383-512, bl=0, norm=True, clip=False)
-                        # imgs_ds = torch.from_numpy(ds[None,]).type(torch.FloatTensor).to(self.device)
-                        # imgs_dn = imgs_dn + imgs_ds
                         imgs_dn = self.corrector(imgs_dn, imgs_hr)
+
                     # PSNR & SSIM (Raw domain)
                     output = tensor2im(imgs_dn)
                     target = tensor2im(imgs_hr)
