@@ -4,6 +4,13 @@ The official implementation of ACMMM 2022 Award Candidates "[Learnability Enhanc
 Presentation video for the Best Paper Session: [YouTube](https://www.youtube.com/watch?v=fW1l73MCT-E) / [BiliBili](https://www.bilibili.com/video/BV1pG411E7mE/)  
 Interested readers are also referred to our official [Note](https://zhuanlan.zhihu.com/p/544592330) about this work in Zhihu (Chinese).
 
+## 🎉 News
+***Please switch to the [TPAMI branch](https://github.com/megvii-research/PMN/tree/TPAMI) to get the latest version of PMN***  
+***TPAMI branch is compatible with this branch on evaluation, but has little difference on training***
+
+**_(2023.08.30)_**: 📰 We have written an [official blog post](https://zhuanlan.zhihu.com/p/651674070) (in Chinese) for the TPAMI version of the paper. I believe this blog will help you gain a deeper understanding of our work.  
+**_(2023.08.03)_**: 🎉 Our paper was accepted by *IEEE Transactions on Pattern Analysis and Machine Intelligence* (TPAMI) 2023~~
+
 ## ✨ Highlights
 ![Pipeline](images/github/pipeline.png)
 * We present a learnability enhancement strategy to reform paired real data according to noise modeling. Our strategy consists of two efficient techniques: shot noise augmentation (SNA) and dark shading correction (DSC). 
