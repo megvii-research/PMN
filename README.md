@@ -228,10 +228,10 @@ If you find our code helpful in your research or work please cite our paper.
   author={Feng, Hansen and Wang, Lizhi and Wang, Yuzhi and Fan, Haoqiang and Huang, Hua},
   journal={IEEE Transactions on Pattern Analysis and Machine Intelligence}, 
   title={Learnability Enhancement for Low-Light Raw Image Denoising: A Data Perspective}, 
-  year={2023},
-  volume={},
-  number={},
-  pages={1-18},
+  year={2024},
+  volume={46},
+  number={1},
+  pages={370-387},
   doi={10.1109/TPAMI.2023.3301502}
 }
 ```
